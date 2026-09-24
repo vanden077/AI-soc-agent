@@ -1,0 +1,29 @@
+version: "3"
+
+services:
+  # --- LLM Local engine ---
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cyber_agent_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  # --- Cache | Checkpointer | Vector database ---
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: cyber_agent_redis
+    environment:
+      - REDIS_ARGS=--save 60 1 --appendonly yes # save once every 60 seconds in case of writing + persistence activation
+    ports:
+      - "6379:6379"  # default port
+      - "8001:8001"  # access to redis insight
+    volumes:
+      - redis_cyber_data:/data
+    restart: always
+
+volumes:
+  ollama_data: { }
+  redis_cyber_data: { }
