@@ -1,10 +1,8 @@
 import json
 import logging
 import os
-
-# import subprocess
 import urllib.request
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final
 
