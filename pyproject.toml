@@ -1,13 +1,14 @@
 [project]
 name = "soc-agent"
 version = "0.1.0"
-description = "AI Soc analyst doing MITRE correlations."
+description = "AI Soc analyst performing MITRE correlations."
 readme = "README.md"
 authors = [
     { name = "Clément Pichet", email = "vanden.077@gmail.com" }
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi[standard]>=0.115.0",
     "langchain-ollama>=1.1.0",
     "langgraph==1.2.12",
     "pydantic>=2.13.5",
@@ -16,8 +17,8 @@ dependencies = [
     "langchain-redis==0.2.6",
     "langchain-huggingface>=0.1.0",
     "sentence-transformers==6.1.0",
-    "ruff==0.16.8",
-    "langchain-core>=1.6.4",
+    "ruff==0.16.9",
+    "langchain-core==1.6.5",
 ]
 
 [[tool.uv.index]]
@@ -27,9 +28,6 @@ explicit = true
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
-
-[project.scripts]
-soc-agent = "soc_agent:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

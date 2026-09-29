@@ -1,29 +1,68 @@
-version: "3"
+x-redis-creds: &redis-creds
+  REDIS_USERNAME: "default"
+  REDIS_PASSWORD: "uAknMMvZDYm7HhhaWPp3" # <= i know ...
 
 services:
+  web:
+    build:
+      context: ./
+      dockerfile: ./dev.dockerfile
+    container_name: cyber-agent-api
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - /app/.venv
+    environment:
+      <<: *redis-creds
+      ENV: "development"
+      MITRE_STIX_URL: "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json"
+      MITRE_JSON_PATH: "data/mitre/enterprise-attack.json"
+      REDIS_HOST: "cyber-agent-redis"
+      REDIS_PORT: 6379
+      REDIS_JSON_POOL_SIZE: 5
+      REDIS_VECTOR_POOL_SIZE: 20
+      REDIS_RETRY_STRATEGY: 3
+      REDIS_SSL: "False"
+      INDEX_NAME: "mitre_attack_v1"
+    command: uv run fastapi dev src/main.py --host 0.0.0.0 --port 8080
+    depends_on:
+      - redis
+    networks:
+      - cyber-agent-network
+
   # --- LLM Local engine ---
   ollama:
     image: ollama/ollama:latest
-    container_name: cyber_agent_ollama
+    container_name: cyber-agent-ollama
     ports:
       - "11434:11434"
     volumes:
-      - ollama_data:/root/.ollama
+      - ollama-data:/root/.ollama
     restart: unless-stopped
+    networks:
+      - cyber-agent-network
 
   # --- Cache | Checkpointer | Vector database ---
   redis:
     image: redis/redis-stack-server:latest
-    container_name: cyber_agent_redis
+    container_name: cyber-agent-redis
     environment:
-      - REDIS_ARGS=--save 60 1 --appendonly yes # save once every 60 seconds in case of writing + persistence activation
+      <<: *redis-creds
+      REDIS_ARGS: "--save 60 1 --appendonly yes"
     ports:
-      - "6379:6379"  # default port
-      - "8001:8001"  # access to redis insight
+      - "6379:6379"
+      - "8001:8001"
     volumes:
-      - redis_cyber_data:/data
+      - redis-cyber-data:/data
     restart: always
+    networks:
+      - cyber-agent-network
 
 volumes:
-  ollama_data: { }
-  redis_cyber_data: { }
+  ollama-data: { }
+  redis-cyber-data: { }
+
+networks:
+  cyber-agent-network:
+    driver: bridge
