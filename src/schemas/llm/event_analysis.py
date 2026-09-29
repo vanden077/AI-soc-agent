@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.schemas.mitre_attack_correlation import MitreAttackCorrelation
+from schemas.llm.mitre_attack_correlation import MitreAttackCorrelation
 
 
 class SeverityLevel(StrEnum):
