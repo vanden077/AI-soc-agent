@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from langchain_core.runnables import RunnableSequence
@@ -7,7 +7,7 @@ from pydantic_core import InitErrorDetails
 
 from src.adapters.llm import OllamaAdapter
 from src.models.siem_alert_state import SiemAlertState
-from src.schemas.event_analysis import EventAnalysis, RemediationAction, SeverityLevel
+from schemas.llm.event_analysis import EventAnalysis, RemediationAction, SeverityLevel
 
 
 def test_init_structured_model_properties(llm_adapter: OllamaAdapter) -> None:

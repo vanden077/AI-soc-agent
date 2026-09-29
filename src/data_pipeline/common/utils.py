@@ -17,6 +17,7 @@ MITRE_JSON_PATH: Final[Path] = Path("data/mitre/enterprise-attack.json")
 REDIS_URL: Final[str] = "redis://localhost:6379/0"
 INDEX_NAME: Final[str] = "mitre_attack_v1"
 
+# TODO remove those vars and use Settings object instead + update all unit tests.
 
 def check_matrix_is_locally_cached() -> bool:
     """Check if the MITRE attack JSON file exists on the local file system."""

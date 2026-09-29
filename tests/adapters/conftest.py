@@ -4,7 +4,7 @@ import pytest
 
 from src.adapters.llm import OllamaAdapter
 from src.models.siem_alert_state import SiemAlertState
-from src.schemas.event_analysis import RemediationAction, SeverityLevel
+from schemas.llm.event_analysis import RemediationAction, SeverityLevel
 
 
 @pytest.fixture
