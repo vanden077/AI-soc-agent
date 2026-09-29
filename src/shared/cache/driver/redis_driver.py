@@ -23,6 +23,7 @@ class RedisDriver(ABC):
         password: str | None = None,
         max_size_pool: int = 50,
         retry_strategy: int = 3,
+        decode_responses: bool = True
     ):
         self._host = "localhost" if host is None else host
         self._port = 6379 if port is None else port
@@ -32,6 +33,7 @@ class RedisDriver(ABC):
         self._max_size_pool = max_size_pool
         self._retry_strategy = retry_strategy
         self._retry = Retry(ExponentialBackoff(cap=1, base=0.2), retry_strategy)
+        self._decode_responses = decode_responses
         self._client: Redis | None = None
 
     @abstractmethod
@@ -146,7 +148,7 @@ class RedisDriver(ABC):
                     port=self._port,
                     username=self._username,
                     password=self._password,
-                    decode_responses=True,
+                    decode_responses=self._decode_responses,
                     protocol=3,
                     retry=self._retry,
                     ssl=self._ssl,

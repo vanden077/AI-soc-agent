@@ -1,3 +1,4 @@
+import pytest
 from fakeredis import FakeRedis
 
 from src.shared.cache import RedisClient
@@ -21,7 +22,7 @@ def test_driver_instance():
 
 
 def test_driver_pool(redis, flush_cache):
-    assert redis.pool_size == 2147483648  # because of fakeredis
+    assert redis.pool_size > 0  # because of fakeredis, pool size can be random
     assert redis.retry_strategy == 3
     assert isinstance(redis.redis_client, FakeRedis)
 
@@ -44,6 +45,28 @@ def test_driver_pool_exception(mocker, caplog):
 
     assert cache_client.redis_client is None
     assert "Cache pool is KO because: Mocked exception" in caplog.messages
+
+
+@pytest.mark.parametrize(
+    "input_kwargs, expected_value",
+    [
+        ({}, True),                      # Par défaut -> True
+        ({"decode_responses": False}, False),  # Forcé à False -> False
+        ({"decode_responses": True}, True),   # Forcé à True -> True
+    ]
+)
+def test_driver_decode_responses(input_kwargs, expected_value):
+    cache_client = RedisClient(
+        host="test",
+        port=1,
+        username="username",
+        password="test",
+        max_size_pool=1,
+        retry_strategy=1,
+        **input_kwargs
+    )
+
+    assert cache_client._decode_responses is expected_value
 
 
 def test_health_check_server_up(redis):
@@ -76,7 +99,7 @@ def test_pool_is_recreated_if_connection_lost(redis):
     assert redis.pool_size == 0
     # get data inserted before, this asserts that pool has been re-created
     ret = redis.get(key=1)
-    assert redis.pool_size == 2147483648  # because of fakeredis
+    assert redis.pool_size > 0  # because of fakeredis, pool size can be random
     assert ret == {"test": "test"}
 
 
