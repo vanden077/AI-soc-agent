@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import Any
 
 import pytest
-from dataset_test import MITRE_ATTACK_CORRELATION_SCHEMA
+from tests.dataset_test import MITRE_ATTACK_CORRELATION_SCHEMA
 from pydantic import ValidationError
 
 from src.schemas import MitreAttackCorrelation

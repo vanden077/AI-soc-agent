@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 import pytest
-from dataset_test import (
+from tests.dataset_test import (
     EVENT_ANALYSIS_SCHEMA,
     MITRE_ATTACK_CORRELATION_SCHEMA,
     SIEM_ALERT_STATE_MODEL,

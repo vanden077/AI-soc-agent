@@ -2,13 +2,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import redis
-from dataset_test import STIX_MOCK
+from tests.dataset_test import STIX_MOCK
 from langchain_core.documents import Document
+
+from schemas import Settings
 from src.data_pipeline.exceptions import MitreDownloadError
 from src.data_pipeline.mitre_pipeline import MitrePipeline
 
 
-def test_start_pipeline():
+def test_start_pipeline(mock_settings: Settings):
     """Normal process"""
     with (
         patch(
@@ -20,7 +22,7 @@ def test_start_pipeline():
     ):
         mock_load.return_value = None
         mock_inject.return_value = None
-        mitre_pipeline = MitrePipeline()
+        mitre_pipeline = MitrePipeline(mock_settings)
         mitre_pipeline._mitre_json = STIX_MOCK
         mitre_pipeline.start_pipeline()
 
@@ -77,7 +79,7 @@ PIPELINE_EXCEPTIONS_DATA = [
     "target_mock_path, simulated_exception, test_case_id", PIPELINE_EXCEPTIONS_DATA
 )
 def test_pipeline_crashing(
-    target_mock_path: str, simulated_exception: Exception, test_case_id: str
+    target_mock_path: str, simulated_exception: Exception, test_case_id: str, mock_settings: Settings
 ):
     """Ensure that start_pipeline safely catches and wraps any infrastructure exceptions into a strict RuntimeError."""
     with (
@@ -92,7 +94,7 @@ def test_pipeline_crashing(
         mock_load.return_value = None
 
         with patch(target_mock_path, side_effect=simulated_exception):
-            mitre_pipeline = MitrePipeline()
+            mitre_pipeline = MitrePipeline(mock_settings)
             mitre_pipeline._mitre_json = STIX_MOCK
 
             with pytest.raises(RuntimeError) as err:
@@ -100,20 +102,20 @@ def test_pipeline_crashing(
             assert str(simulated_exception) in str(err.value)
 
 
-def test_get_mitre_attack_stix_json():
+def test_get_mitre_attack_stix_json(mock_settings: Settings):
     """Normal process, get stix json"""
     with (
         patch(
-            "src.data_pipeline.mitre_pipeline.check_matrix_is_locally_cached"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.check_matrix_is_locally_cached"
         ) as mock_check,
         patch(
-            "src.data_pipeline.mitre_pipeline.load_json_mitre_in_memory"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.load_json_mitre_in_memory"
         ) as mock_load,
     ):
         mock_check.return_value = True
         mock_load.return_value = STIX_MOCK
 
-        mitre_pipeline = MitrePipeline()
+        mitre_pipeline = MitrePipeline(mock_settings)
         mitre_pipeline._get_mitre_attack_stix_json()
 
         mock_check.assert_called_once()
@@ -121,22 +123,22 @@ def test_get_mitre_attack_stix_json():
         assert mitre_pipeline._mitre_json == STIX_MOCK
 
 
-def test_local_mitre_repository_do_not_exists():
+def test_local_mitre_repository_do_not_exists(mock_settings: Settings):
     """Get stix json, repository data.mitre.enterprise-attack.json do not exist"""
     with (
         patch(
-            "src.data_pipeline.mitre_pipeline.check_matrix_is_locally_cached"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.check_matrix_is_locally_cached"
         ) as mock_check,
-        patch("src.data_pipeline.mitre_pipeline.create_local_matrix") as mock_create,
+        patch("src.data_pipeline.common.pipeline_utils.PipelineUtils.create_local_matrix") as mock_create,
         patch(
-            "src.data_pipeline.mitre_pipeline.load_json_mitre_in_memory"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.load_json_mitre_in_memory"
         ) as mock_load,
     ):
         mock_check.return_value = False
         mock_create.return_value = None
         mock_load.return_value = STIX_MOCK
 
-        mitre_pipeline = MitrePipeline()
+        mitre_pipeline = MitrePipeline(mock_settings)
         mitre_pipeline._get_mitre_attack_stix_json()
 
         mock_check.assert_called_once()
@@ -145,24 +147,24 @@ def test_local_mitre_repository_do_not_exists():
         assert mitre_pipeline._mitre_json == STIX_MOCK
 
 
-def test_get_mitre_cache_invalid_or_missing():
+def test_get_mitre_cache_invalid_or_missing(mock_settings: Settings):
     """Get stix json, repository exists but is empty"""
     with (
         patch(
-            "src.data_pipeline.mitre_pipeline.check_matrix_is_locally_cached"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.check_matrix_is_locally_cached"
         ) as mock_check,
         patch(
-            "src.data_pipeline.mitre_pipeline.load_json_mitre_in_memory"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.load_json_mitre_in_memory"
         ) as mock_load,
         patch(
-            "src.data_pipeline.mitre_pipeline.download_latest_mitre_version"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.download_latest_mitre_version"
         ) as mock_download,
     ):
         mock_check.return_value = True
         mock_load.side_effect = [None, STIX_MOCK]
         mock_download.return_value = None
 
-        mitre_pipeline = MitrePipeline()
+        mitre_pipeline = MitrePipeline(mock_settings)
         mitre_pipeline._get_mitre_attack_stix_json()
 
         mock_check.assert_called_once()
@@ -170,17 +172,17 @@ def test_get_mitre_cache_invalid_or_missing():
         assert mitre_pipeline._mitre_json == STIX_MOCK
 
 
-def test_get_mitre_raise_exception():
+def test_get_mitre_raise_exception(mock_settings: Settings):
     """Get stix json fails even after retry"""
     with (
         patch(
-            "src.data_pipeline.mitre_pipeline.check_matrix_is_locally_cached"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.check_matrix_is_locally_cached"
         ) as mock_check,
         patch(
-            "src.data_pipeline.mitre_pipeline.load_json_mitre_in_memory"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.load_json_mitre_in_memory"
         ) as mock_load,
         patch(
-            "src.data_pipeline.mitre_pipeline.download_latest_mitre_version"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils.download_latest_mitre_version"
         ) as mock_download,
     ):
         mock_check.return_value = True
@@ -188,15 +190,15 @@ def test_get_mitre_raise_exception():
         mock_download.return_value = None
 
         with pytest.raises(MitreDownloadError) as err:
-            mitre_pipeline = MitrePipeline()
+            mitre_pipeline = MitrePipeline(mock_settings)
             mitre_pipeline._get_mitre_attack_stix_json()
         assert (
             str(err.value)
-            == f"MITRE JSON is not downloadable or invalid, process aborted. Please check: {mitre_pipeline._mitre_json_path}"
+            == f"❌ MITRE JSON is not downloadable or invalid, process aborted. Please check: {mitre_pipeline._mitre_json_path}"
         )
 
 
-def test_inject_data_into_redis_with_metadata_schema():
+def test_inject_data_into_redis_with_metadata_schema(mock_settings: Settings):
     """Verify that the pipeline configures TAG indices and enforces stable IDs for UPSERT capabilities."""
     with (
         patch(
@@ -209,7 +211,7 @@ def test_inject_data_into_redis_with_metadata_schema():
         mock_embeddings_instance = MagicMock()
         mock_embeddings_cls.return_value = mock_embeddings_instance
 
-        mitre_pipeline = MitrePipeline()
+        mitre_pipeline = MitrePipeline(mock_settings)
         mitre_pipeline._vector_docs = [
             Document(
                 page_content="T1055: Process Injection description",

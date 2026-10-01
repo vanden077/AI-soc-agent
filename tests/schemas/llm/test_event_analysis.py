@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import Any
 
 import pytest
-from dataset_test import (
+from tests.dataset_test import (
     EVENT_ANALYSIS_SCHEMA,
     MITRE_ATTACK_CORRELATION_SCHEMA,
 )

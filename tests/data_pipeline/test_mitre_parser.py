@@ -1,4 +1,4 @@
-from dataset_test import STIX_MOCK
+from tests.dataset_test import STIX_MOCK
 from langchain_core.documents import Document
 from src.data_pipeline.mitre_parser import MitreParser
 

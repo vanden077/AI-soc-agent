@@ -5,8 +5,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-from dataset_test import STIX_MOCK
-from src.data_pipeline.common import utils
+
+from src.schemas import Settings
+from tests.dataset_test import STIX_MOCK
+from src.data_pipeline.common.pipeline_utils import PipelineUtils
 from src.data_pipeline.exceptions import MitreDownloadError, MitreJsonError
 
 
@@ -18,7 +20,13 @@ def freeze_time_september_2026(monkeypatch):
         return datetime(2026, 9, 22, 12, 0, 0, tzinfo=UTC)
 
     mock_datetime_class = type("MockDatetime", (datetime,), {"now": mock_now})
-    monkeypatch.setattr("src.data_pipeline.common.utils.datetime", mock_datetime_class)
+    monkeypatch.setattr("src.data_pipeline.common.pipeline_utils.datetime", mock_datetime_class)
+
+@pytest.fixture
+def mock_pipeline_utils(mock_settings: Settings) -> PipelineUtils:
+    return PipelineUtils(mock_settings)
+
+
 
 
 # ==========================================
@@ -26,16 +34,16 @@ def freeze_time_september_2026(monkeypatch):
 # ==========================================
 
 
-def test_check_matrix_is_locally_cached():
+def test_check_matrix_is_locally_cached(mock_pipeline_utils: PipelineUtils):
     """Should return True if the target JSON matrix file exists on the local file system."""
     with patch.object(Path, "exists", return_value=True):
-        assert utils.check_matrix_is_locally_cached() is True
+        assert mock_pipeline_utils.check_matrix_is_locally_cached() is True
 
 
-def test_create_local_matrix():
+def test_create_local_matrix(mock_pipeline_utils: PipelineUtils):
     """Should call mkdir with proper arguments to verify the cache folder structure creation."""
     with patch.object(Path, "mkdir") as mock_mkdir:
-        utils.create_local_matrix()
+        mock_pipeline_utils.create_local_matrix()
         mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
 
@@ -44,7 +52,7 @@ def test_create_local_matrix():
 # ==========================================
 
 
-def test_download_latest_mitre_version_success():
+def test_download_latest_mitre_version_success(mock_pipeline_utils: PipelineUtils):
     """Should execute the native Python download successfully when HTTP status is 200."""
     mock_response = MagicMock()
     mock_response.status = 200
@@ -57,14 +65,14 @@ def test_download_latest_mitre_version_success():
         patch("builtins.open", m_open),
     ):
         mock_urlopen.return_value.__enter__.return_value = mock_response
-        utils.download_latest_mitre_version()
+        mock_pipeline_utils.download_latest_mitre_version()
 
         mock_request_cls.assert_called_once()
-        m_open.assert_called_once_with(Path(utils.MITRE_JSON_PATH), "wb")
+        m_open.assert_called_once_with(Path(mock_pipeline_utils._mitre_json_path), "wb")
         m_open().write.assert_called_once_with(b'{"objects": []}')
 
 
-def test_download_latest_mitre_version_failure():
+def test_download_latest_mitre_version_failure(mock_pipeline_utils: PipelineUtils):
     """Should raise MitreDownloadError if the remote server returns a non-200 HTTP status code."""
     mock_response = MagicMock()
     mock_response.status = 404
@@ -77,7 +85,7 @@ def test_download_latest_mitre_version_failure():
         ),
     ):
         mock_urlopen.return_value.__enter__.return_value = mock_response
-        utils.download_latest_mitre_version()
+        mock_pipeline_utils.download_latest_mitre_version()
 
 
 # ==========================================
@@ -85,7 +93,7 @@ def test_download_latest_mitre_version_failure():
 # ==========================================
 
 
-def test_get_mitre_file_modification_date_success():
+def test_get_mitre_file_modification_date_success(mock_pipeline_utils: PipelineUtils):
     """Should correctly convert physical OS file timestamp into an ISO-8601 formatted string."""
     fixed_dt = datetime(2026, 9, 22, 12, 0, 0, tzinfo=UTC)
 
@@ -93,11 +101,11 @@ def test_get_mitre_file_modification_date_success():
         patch("os.path.getmtime", return_value=fixed_dt.timestamp()),
         patch.object(Path, "exists", return_value=True),
     ):
-        result = utils.get_mitre_file_modification_date()
+        result = mock_pipeline_utils._get_mitre_file_modification_date()
         assert result == "2026-09-22T12:00:00Z"
 
 
-def test_get_mitre_file_modification_date_missing_file():
+def test_get_mitre_file_modification_date_missing_file(mock_pipeline_utils: PipelineUtils):
     """Should raise FileNotFoundError when calling metadata extraction on a missing cache file."""
     with (
         patch.object(Path, "exists", return_value=False),
@@ -105,7 +113,7 @@ def test_get_mitre_file_modification_date_missing_file():
             FileNotFoundError, match="Cannot extract metadata, file not found"
         ),
     ):
-        utils.get_mitre_file_modification_date()
+        mock_pipeline_utils._get_mitre_file_modification_date()
 
 
 @pytest.mark.parametrize(
@@ -118,21 +126,21 @@ def test_get_mitre_file_modification_date_missing_file():
     ],
 )
 def test_is_json_stix_up_to_date_cases(
-    freeze_time_september_2026, modified_str: str, expected_valid: bool
+    freeze_time_september_2026, modified_str: str, expected_valid: bool, mock_pipeline_utils: PipelineUtils
 ):
     """Should enforce the strict 5-day cache TTL against the mocked time anchor."""
-    assert utils._is_json_stix_up_to_date(modified_str) is expected_valid
+    assert mock_pipeline_utils._is_json_stix_up_to_date(modified_str) is expected_valid
 
 
 @pytest.mark.parametrize("corrupted_str", ["malformed-date", ""])
-def test_is_json_stix_up_to_date_corrupted(corrupted_str: str):
+def test_is_json_stix_up_to_date_corrupted(corrupted_str: str, mock_pipeline_utils: PipelineUtils):
     """Should handle invalid or non-date string arguments gracefully by returning False."""
-    assert utils._is_json_stix_up_to_date(corrupted_str) is False
+    assert mock_pipeline_utils._is_json_stix_up_to_date(corrupted_str) is False
 
 
-def test_is_json_stix_up_to_date_naive_datetime(freeze_time_september_2026):
+def test_is_json_stix_up_to_date_naive_datetime(freeze_time_september_2026, mock_pipeline_utils: PipelineUtils):
     """Should handle naive datetime strings by forcing UTC fallback inside the evaluation logic."""
-    assert utils._is_json_stix_up_to_date("2026-09-20T12:00:00") is True
+    assert mock_pipeline_utils._is_json_stix_up_to_date("2026-09-20T12:00:00") is True
 
 
 # ==========================================
@@ -140,63 +148,63 @@ def test_is_json_stix_up_to_date_naive_datetime(freeze_time_september_2026):
 # ==========================================
 
 
-def test_find_mitre_collection_object_found():
+def test_find_mitre_collection_object_found(mock_pipeline_utils: PipelineUtils):
     """Should successfully extract the unique x-mitre-collection block from the shared mock dataset."""
-    result = utils._find_mitre_collection_object(STIX_MOCK)
+    result = mock_pipeline_utils._find_mitre_collection_object(STIX_MOCK)
     assert result is not None
     assert result["type"] == "x-mitre-collection"
 
 
-def test_find_mitre_collection_object_missing():
+def test_find_mitre_collection_object_missing(mock_pipeline_utils: PipelineUtils):
     """Should return None if the x-mitre-collection block is manually removed from the payload."""
     stix_data = copy.deepcopy(STIX_MOCK)
     stix_data["objects"].pop(0)
-    assert utils._find_mitre_collection_object(stix_data) is None
+    assert mock_pipeline_utils._find_mitre_collection_object(stix_data) is None
 
 
-def test_load_json_mitre_missing_file():
+def test_load_json_mitre_missing_file(mock_pipeline_utils: PipelineUtils):
     """Should return an empty dict gracefully if the target file cannot be found on disk."""
     with patch.object(Path, "exists", return_value=False):
-        assert utils.load_json_mitre_in_memory() == {}
+        assert mock_pipeline_utils.load_json_mitre_in_memory() == {}
 
 
-def test_load_json_mitre_invalid_json():
+def test_load_json_mitre_invalid_json(mock_pipeline_utils: PipelineUtils):
     """Should catch JSONDecodeError and wrap it into a MitreJsonError exception."""
     with (
         patch.object(Path, "exists", return_value=True),
         patch("builtins.open", mock_open(read_data="{ invalid json }")),
         pytest.raises(MitreJsonError, match="Invalid JSON structure detected in cache"),
     ):
-        utils.load_json_mitre_in_memory()
+        mock_pipeline_utils.load_json_mitre_in_memory()
 
 
-def test_load_json_mitre_success(freeze_time_september_2026):
+def test_load_json_mitre_success(freeze_time_september_2026, mock_pipeline_utils: PipelineUtils):
     """Should return the full parsed data structure if everything is valid and up to date based on OS metadata."""
     with (
         patch(
-            "src.data_pipeline.common.utils.get_mitre_file_modification_date"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils._get_mitre_file_modification_date"
         ) as mock_mod_date,
         patch.object(Path, "exists", return_value=True),
         patch("builtins.open", mock_open(read_data=json.dumps(STIX_MOCK))),
     ):
         mock_mod_date.return_value = "2026-09-21T12:00:00Z"
-        assert utils.load_json_mitre_in_memory() == STIX_MOCK
+        assert mock_pipeline_utils.load_json_mitre_in_memory() == STIX_MOCK
 
 
-def test_load_json_mitre_expired_cache(freeze_time_september_2026):
+def test_load_json_mitre_expired_cache(freeze_time_september_2026, mock_pipeline_utils: PipelineUtils):
     """Should trigger a re-download indicator (empty dict) if OS file metadata shows it is older than 5 days."""
     with (
         patch(
-            "src.data_pipeline.common.utils.get_mitre_file_modification_date"
+            "src.data_pipeline.common.pipeline_utils.PipelineUtils._get_mitre_file_modification_date"
         ) as mock_mod_date,
         patch.object(Path, "exists", return_value=True),
         patch("builtins.open", mock_open(read_data=json.dumps(STIX_MOCK))),
     ):
         mock_mod_date.return_value = "2026-09-10T12:00:00Z"
-        assert utils.load_json_mitre_in_memory() == {}
+        assert mock_pipeline_utils.load_json_mitre_in_memory() == {}
 
 
-def test_load_json_mitre_missing_collection_object():
+def test_load_json_mitre_missing_collection_object(mock_pipeline_utils: PipelineUtils):
     """Should fallback and return empty dict if no collection metadata object is found in the stream."""
     invalid_payload = {
         "objects": [{"type": "attack-pattern", "id": "attack-pattern--1"}]
@@ -206,10 +214,10 @@ def test_load_json_mitre_missing_collection_object():
         patch.object(Path, "exists", return_value=True),
         patch("builtins.open", mock_open(read_data=json.dumps(invalid_payload))),
     ):
-        assert utils.load_json_mitre_in_memory() == {}
+        assert mock_pipeline_utils.load_json_mitre_in_memory() == {}
 
 
-def test_load_json_mitre_collection_missing_modified_key():
+def test_load_json_mitre_collection_missing_modified_key(mock_pipeline_utils: PipelineUtils):
     """Should return an empty dict if the collection block exists but lacks its modification timestamp."""
     invalid_payload = {"objects": [{"type": "x-mitre-collection"}]}
 
@@ -217,4 +225,4 @@ def test_load_json_mitre_collection_missing_modified_key():
         patch.object(Path, "exists", return_value=True),
         patch("builtins.open", mock_open(read_data=json.dumps(invalid_payload))),
     ):
-        assert utils.load_json_mitre_in_memory() == {}
+        assert mock_pipeline_utils.load_json_mitre_in_memory() == {}

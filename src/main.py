@@ -4,10 +4,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from api.dev_setup.setup import configure_dev_helpers
-from schemas import Settings
+from src.api.dev_setup.setup import configure_dev_helpers
+from src.data_pipeline.mitre_pipeline import MitrePipeline
+from src.schemas import Settings
 
-from shared.cache import RedisClient
+from src.shared.cache import RedisClient
 from src.api.routers.health import health_route
 
 logging.basicConfig(
@@ -53,7 +54,11 @@ async def lifespan(_: FastAPI):
     # start vector pool
     vector_cache.init_pool()
 
-    logger.info("🚀 STARTUP COMPLETE 🚀")
+    # TODO run mitre pipeline at startup + add route to manually call it
+    mitre_pipeline = MitrePipeline(settings=settings)
+    mitre_pipeline.start_pipeline()
+
+    logger.info("🚀 STARTUP COMPLETE")
 
     # injection into FastAPI context
     yield {
