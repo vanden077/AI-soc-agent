@@ -8,7 +8,7 @@ from typing import Any, Final
 
 from langchain_core.documents import Document
 
-from schemas import Settings
+from src.common.constants import Settings
 from ..exceptions import MitreDownloadError, MitreJsonError
 
 logger = logging.getLogger(__name__)

@@ -1,12 +1,11 @@
 import copy
 import json
+import pytest
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
-import pytest
-
-from src.schemas import Settings
+from src.common.constants import Settings
 from tests.dataset_test import STIX_MOCK
 from src.data_pipeline.common.pipeline_utils import PipelineUtils
 from src.data_pipeline.exceptions import MitreDownloadError, MitreJsonError

@@ -1,6 +1,10 @@
 import logging
-from langchain_huggingface import HuggingFaceEmbeddings
+from typing import Any
+
+#from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_redis import RedisConfig, RedisVectorStore
+
+from src.embedding.common.i_embedding_engine import IEmbeddingEngine
 from .common.pipeline_utils import PipelineUtils
 from .exceptions import MitreDownloadError
 from .mitre_parser import MitreParser
@@ -10,6 +14,11 @@ logger = logging.getLogger(__name__)
 # TODO use vector client as init parameters + update all unit tests.
 
 class MitrePipeline(PipelineUtils):
+    def __init__(self, embedding_model: IEmbeddingEngine, *args: Any, ** kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._embedding_model = embedding_model
+
+
     """Acts as an orchestrator for MITRE Attack JSON ingestion with indexed metadata fields."""
     def start_pipeline(self) -> None:
         """Main process orchestrator.
@@ -60,8 +69,8 @@ class MitrePipeline(PipelineUtils):
 
     def _inject_data_into_redis(self) -> None:
         """Inject vectorized documents into the Redis vector store with explicit TAG schema index fields."""
-        logger.info("⚙️ Initializing HuggingFace Embeddings (all-MiniLM-L6-v2) on CPU...")
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        #logger.info("⚙️ Initializing HuggingFace Embeddings (all-MiniLM-L6-v2) on CPU...")
+        #embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
         logger.info(f"⚙️ Building HNSW graph in Redis (Index: {self._index_name})...")
 
@@ -84,7 +93,7 @@ class MitrePipeline(PipelineUtils):
 
         RedisVectorStore.from_documents(
             documents=self._vector_docs,
-            embedding=embeddings,
+            embedding=self._embedding_model.embedding,
             config=config,
             ids=stable_ids,
         )

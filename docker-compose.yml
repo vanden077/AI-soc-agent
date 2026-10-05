@@ -25,6 +25,8 @@ services:
       REDIS_RETRY_STRATEGY: 3
       REDIS_SSL: "False"
       INDEX_NAME: "mitre_attack_v1"
+      EMBEDDING_ENGINE: "huggingface"
+      EMBEDDING_MODEL_NAME: "all-MiniLM-L6-v2"
     command: uv run fastapi dev src/main.py --host 0.0.0.0 --port 8080
     depends_on:
       - redis

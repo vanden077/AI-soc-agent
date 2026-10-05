@@ -1,15 +1,17 @@
 import logging
 import os
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 
-from src.api.dev_setup.setup import configure_dev_helpers
-from src.data_pipeline.mitre_pipeline import MitrePipeline
-from src.schemas import Settings
+from src.embedding import EmbeddingManager
+from src.common.constants import Settings
+from src.common.dev_setup import configure_dev_helpers
+from src.common.cache import RedisClient, RedisVectorClient
 
-from src.shared.cache import RedisClient
-from src.api.routers.health import health_route
+from src.data_pipeline import MitrePipeline
+
+from src.api.routers import health_route
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,9 +40,15 @@ async def lifespan(_: FastAPI):
     # start json pool
     json_cache.init_pool()
 
+    # create an instance of the embedding engine based on env vars
+    logger.info("⚙️ Create Embedding engine, could take a while, please be patient...")
+    emb = EmbeddingManager(provider=settings.EMBEDDING_ENGINE, model_name=settings.EMBEDDING_MODEL_NAME)
+    logger.info(f"🚀 Embedding engine {emb.engine.engine_name}, model {emb.engine.model_name} is ready.")
+
     # create a connexion pool to Redis for vectorized documents
     logger.info("⚙️ Create connexion pool to Redis for vectorized documents...")
-    vector_cache = RedisClient(
+    vector_cache = RedisVectorClient(
+        embedding_model=emb.engine,
         host=settings.REDIS_HOST,
         port=settings.REDIS_PORT,
         username=settings.REDIS_USERNAME,
@@ -55,14 +63,15 @@ async def lifespan(_: FastAPI):
     vector_cache.init_pool()
 
     # TODO run mitre pipeline at startup + add route to manually call it
-    mitre_pipeline = MitrePipeline(settings=settings)
-    mitre_pipeline.start_pipeline()
+    # mitre_pipeline = MitrePipeline(embedding_model=emb.engine, settings=settings)
+    # mitre_pipeline.start_pipeline()
 
     logger.info("🚀 STARTUP COMPLETE")
 
     # injection into FastAPI context
     yield {
         "settings": settings,
+        "embedding_engine": emb.engine,
         "json_cache": json_cache,
         "vector_cache": vector_cache
     }
