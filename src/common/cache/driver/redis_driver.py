@@ -23,7 +23,8 @@ class RedisDriver(ABC):
         password: str | None = None,
         max_size_pool: int = 50,
         retry_strategy: int = 3,
-        decode_responses: bool = True
+        decode_responses: bool = True,
+        db: int = 0
     ):
         self._host = "localhost" if host is None else host
         self._port = 6379 if port is None else port
@@ -34,6 +35,7 @@ class RedisDriver(ABC):
         self._retry_strategy = retry_strategy
         self._retry = Retry(ExponentialBackoff(cap=1, base=0.2), retry_strategy)
         self._decode_responses = decode_responses
+        self._db = db
         self._client: Redis | None = None
 
     @abstractmethod
@@ -152,6 +154,7 @@ class RedisDriver(ABC):
                     protocol=3,
                     retry=self._retry,
                     ssl=self._ssl,
+                    db=self._db,
                 )
                 # ping server to be sure that the connection is really established
                 self._client.ping()

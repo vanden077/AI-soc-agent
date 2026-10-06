@@ -11,7 +11,6 @@ class RedisClient(RedisDriver):
     Redis client implements Redis driver abstract methods.
     Get or insert data to Redis server.
     """
-
     def get(self, key: str) -> dict[str, Any] | None:
         """
         Get data from cache

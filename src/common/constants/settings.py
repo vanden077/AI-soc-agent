@@ -60,6 +60,14 @@ class Settings(BaseModel):
         validation_alias="INDEX_NAME",
         description="Index name of the vectorized MITRE in Redis."
     )
+    REDIS_JSON_POOL_DB_ID: int = Field(
+        validation_alias="REDIS_JSON_POOL_DB_ID",
+        description="Index of the Redis database storing JSON documents "
+                    "(only because it is a POC, in production everything should be split).")
+    REDIS_VECTOR_POOL_DB_ID: int = Field(
+        validation_alias="REDIS_VECTOR_POOL_DB_ID",
+        description="Index of the Redis database storing VECTOR documents "
+                    "(only because it is a POC, in production everything should be split).")
     EMBEDDING_ENGINE: str = Field(
         validation_alias="EMBEDDING_ENGINE",
         description="Embedding engine to use, ex: huggingface, openai etc..."
@@ -68,5 +76,6 @@ class Settings(BaseModel):
         validation_alias="EMBEDDING_MODEL_NAME",
         description="Embedding model to use, ex: all-MiniLM-L6-v2, all-mpnet-base-v2 etc..."
     )
+
 
     model_config = ConfigDict(extra="ignore", frozen=True)

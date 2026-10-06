@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from fakeredis import FakeRedis
+from fakeredis import FakeRedis, FakeServer
 from fastapi.testclient import TestClient
 from langchain_huggingface import HuggingFaceEmbeddings
 
@@ -26,10 +26,12 @@ def _session_settings() -> Settings:
         REDIS_USERNAME="default",
         REDIS_PASSWORD="",
         REDIS_JSON_POOL_SIZE=5,
-        REDIS_VECTOR_POOL_SIZE=5,
+        REDIS_VECTOR_POOL_SIZE=10,
         REDIS_RETRY_STRATEGY=3,
         REDIS_SSL=False,
         INDEX_NAME="mitre_attack_v1",
+        REDIS_JSON_POOL_DB_ID=0,
+        REDIS_VECTOR_POOL_DB_ID=1,
         EMBEDDING_ENGINE="huggingface",
         EMBEDDING_MODEL_NAME="all-MiniLM-L6-v2"
     )
@@ -53,10 +55,22 @@ def mock_embedding_engine(mock_settings: Settings) -> EmbeddingManager:
 ########## REDIS ##########
 @pytest.fixture(scope="function", autouse=True)
 def mock_redis_driver(mocker):
-    """Global fixture replacing Redis instance by FakeRedis"""
+    """
+    Global fixture replacing Redis instance by FakeRedis.
+    Simulates ONE single Redis server (FakeServer) for the test.
+    The clients (JSON and Vector) will be completely isolated via their
+    respective connection pools and logical 'db' indexes.
+    """
+    single_redis_server = FakeServer()
+
+    def _shared_server_factory(*args, **kwargs):
+        # each client will be connected to this server, but through isolated connexions pools.
+        kwargs["server"] = single_redis_server
+        return FakeRedis(*args, **kwargs)
+
     return mocker.patch(
         "src.common.cache.driver.redis_driver.Redis",
-        side_effect=FakeRedis
+        side_effect=_shared_server_factory
     )
 
 ########## REDIS JSON CLIENT ##########
@@ -75,10 +89,11 @@ def json_cache(mock_settings: Settings):
             port=mock_settings.REDIS_PORT,
             username=mock_settings.REDIS_USERNAME,
             password=mock_settings.REDIS_PASSWORD,
-            max_size_pool=5,
+            max_size_pool=mock_settings.REDIS_JSON_POOL_SIZE,
             retry_strategy=mock_settings.REDIS_RETRY_STRATEGY,
             decode_responses=True,
             ssl=mock_settings.REDIS_SSL,
+            db=mock_settings.REDIS_JSON_POOL_DB_ID
         )
         cache_client.init_pool()
     except Exception as err:  # noqa: BLE001
@@ -103,10 +118,11 @@ def vector_cache(mock_settings: Settings, mock_embedding_engine: EmbeddingManage
             port=mock_settings.REDIS_PORT,
             username=mock_settings.REDIS_USERNAME,
             password=mock_settings.REDIS_PASSWORD,
-            max_size_pool=10,
+            max_size_pool=mock_settings.REDIS_VECTOR_POOL_SIZE,
             retry_strategy=mock_settings.REDIS_RETRY_STRATEGY,
             decode_responses=False,
             ssl=mock_settings.REDIS_SSL,
+            db=mock_settings.REDIS_VECTOR_POOL_DB_ID
         )
         cache_client.init_pool()
     except Exception as err:  # noqa: BLE001
@@ -131,13 +147,19 @@ def mock_client(
         mock_embedding_engine: EmbeddingManager,
         vector_cache: RedisClient,
         monkeypatch):
-    """Isolated Test Client for routes."""
+    """Isolated Test Client for routes.
+    This function seems complex because we want FastApi lifespan to be executed when we are
+    testing the API part.
+
+    If you need to test cache injections, into a router or a service of "api" module, don't use objects from fastapi
+    context, directly use json_cache or vector_cache fixtures to avoid namespace problems.
+    """
     # inject fake env vars to stay iso-prod
     for key, value in mock_settings.model_dump(mode="json").items():
         if value is not None:
             monkeypatch.setenv(key, str(value))
 
-    # replace RedisClient instance by fixture using FakeRedis
+    # replace Redis Client instances by fixture using FakeRedis
     with patch("src.common.cache.RedisClient", return_value=json_cache):
         with patch("src.common.cache.RedisVectorClient", return_value=vector_cache):
             # CRITICAL FIX: Patch the heavy LangChain constructor *BEFORE* entering the TestClient.

@@ -34,7 +34,8 @@ async def lifespan(_: FastAPI):
         max_size_pool=settings.REDIS_JSON_POOL_SIZE,
         retry_strategy=settings.REDIS_RETRY_STRATEGY,
         ssl=settings.REDIS_SSL,
-        decode_responses=True
+        decode_responses=True,
+        db=settings.REDIS_JSON_POOL_DB_ID
     )
 
     # start json pool
@@ -56,7 +57,8 @@ async def lifespan(_: FastAPI):
         max_size_pool=settings.REDIS_VECTOR_POOL_SIZE,
         retry_strategy=settings.REDIS_RETRY_STRATEGY,
         ssl=settings.REDIS_SSL,
-        decode_responses=False
+        decode_responses=False,
+        db=settings.REDIS_VECTOR_POOL_DB_ID
     )
 
     # start vector pool
