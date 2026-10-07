@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 
-#from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_redis import RedisConfig, RedisVectorStore
 
 from src.embedding.common.i_embedding_engine import IEmbeddingEngine
@@ -69,9 +68,6 @@ class MitrePipeline(PipelineUtils):
 
     def _inject_data_into_redis(self) -> None:
         """Inject vectorized documents into the Redis vector store with explicit TAG schema index fields."""
-        #logger.info("⚙️ Initializing HuggingFace Embeddings (all-MiniLM-L6-v2) on CPU...")
-        #embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-
         logger.info(f"⚙️ Building HNSW graph in Redis (Index: {self._index_name})...")
 
         # Enforcing TAG indices creation for hybrid pre-filtering capabilities

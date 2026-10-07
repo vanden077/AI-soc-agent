@@ -10,8 +10,6 @@ from tests.dataset_test import (
 )
 
 
-
-
 # dataset manipulations for covering all test cases
 def _get_complete_siem_alert_state_model() -> SiemAlertState:
     """Return valid SiemAlertState with a valid event"""

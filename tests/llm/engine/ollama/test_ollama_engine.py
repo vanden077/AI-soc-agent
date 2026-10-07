@@ -2,23 +2,25 @@ from unittest.mock import MagicMock
 
 import pytest
 from langchain_core.runnables import RunnableSequence
-from pydantic import ValidationError
-from pydantic_core import InitErrorDetails
+from pydantic_core import InitErrorDetails, ValidationError
 
+from src.common.constants import Settings
+from src.llm.engine import OllamaEngine
+from src.llm.schemas import SeverityLevel, RemediationAction
 from src.llm.models import SiemAlertState
-from src.llm.schemas import EventAnalysis, SeverityLevel, RemediationAction
-from src.llm.adapters import OllamaAdapter
+from src.llm.schemas import EventAnalysis
 
 
-def test_init_structured_model_properties(llm_adapter: OllamaAdapter) -> None:
+def test_init_structured_model_properties(llm_engine: OllamaEngine, mock_settings: Settings) -> None:
     """Test that the private factory stores properties and binds EventAnalysis correctly using the conftest fixture."""
 
-    # 1. Check that instance variables are correctly mapped and persisted in our fixture
-    assert llm_adapter.model_name == "llama3.1:latest"
-    assert llm_adapter.base_url == "http://localhost:11434"
+    # 1. Check that instance variables are correctly mapped
+    assert llm_engine.model_name == mock_settings.LLM_MODEL
+    assert llm_engine.base_url == mock_settings.LLM_URL
+    assert llm_engine.temperature == mock_settings.LLM_TEMPERATURE
 
     # 2. Call the private factory method directly from our pre-packaged instance
-    runnable = llm_adapter._init_structured_model()
+    runnable = llm_engine._init_llm()
 
     # 3. Verify that the contract is alive and successfully mapped our validation schema
     assert runnable is not None
@@ -32,7 +34,7 @@ def test_format_messages_structures_prompt_correctly(
 ) -> None:
     """Test that the static helper formats state parameters into explicit System and Human messages."""
     # Execute the static method directly from the class namespace using our fixture
-    messages = OllamaAdapter._format_messages(state=sample_cyber_state)
+    messages = OllamaEngine._format_message(state=sample_cyber_state)
     assert isinstance(messages, list)
     assert len(messages) == 2
     assert isinstance(messages[0], tuple)
@@ -44,7 +46,7 @@ def test_format_messages_structures_prompt_correctly(
 
 
 def test_analyze_event_success(
-    llm_adapter: OllamaAdapter,
+    llm_engine: OllamaEngine,
     mock_llm_client: MagicMock,
     valid_analysis_payload: dict,
     sample_cyber_state: SiemAlertState,
@@ -56,7 +58,7 @@ def test_analyze_event_success(
     # regardless of how input/arguments are passed to the .invoke() method
     mock_llm_client.invoke.side_effect = lambda *args, **kwargs: expected_response
 
-    result = llm_adapter.analyze_event(state=sample_cyber_state)
+    result = llm_engine.analyze_event(state=sample_cyber_state)
 
     assert result is not None
     assert result.is_threat is True
@@ -64,9 +66,8 @@ def test_analyze_event_success(
     assert result.suggested_action == RemediationAction.ISOLATE_HOST
     mock_llm_client.invoke.assert_called_once()
 
-
 def test_analyze_event_api_crash_raises_exception(
-    llm_adapter: OllamaAdapter,
+    llm_engine: OllamaEngine,
     mock_llm_client: MagicMock,
     sample_cyber_state: SiemAlertState,
 ) -> None:
@@ -74,13 +75,12 @@ def test_analyze_event_api_crash_raises_exception(
     mock_llm_client.invoke.side_effect = Exception("Ollama socket connection refused")
 
     with pytest.raises(Exception) as exc_info:
-        llm_adapter.analyze_event(state=sample_cyber_state)
+        llm_engine.analyze_event(state=sample_cyber_state)
 
     assert "Ollama socket connection refused" in str(exc_info.value)
 
-
 def test_analyze_event_validation_error_raises_exception(
-    llm_adapter: OllamaAdapter,
+    llm_engine: OllamaEngine,
     mock_llm_client: MagicMock,
     sample_cyber_state: SiemAlertState,
 ) -> None:
@@ -102,4 +102,4 @@ def test_analyze_event_validation_error_raises_exception(
 
     # We ensure that your adapter's 'except ValidationError as ve:' block is reached and re-raises it.
     with pytest.raises(ValidationError):
-        llm_adapter.analyze_event(state=sample_cyber_state)
+        llm_engine.analyze_event(state=sample_cyber_state)

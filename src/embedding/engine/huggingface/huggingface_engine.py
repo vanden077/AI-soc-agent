@@ -7,14 +7,13 @@ class HuggingFaceEngine(IEmbeddingEngine):
     """HuggingFace Embedding engine"""
 
     def __init__(self, model_name: str):
-        self._embedding: HuggingFaceEmbeddings
         self._engine_name = "huggingface"
         self._model_name = model_name
-        self._init_embedding()
+        self._embedding = self._init_embedding()
 
-    def _init_embedding(self) -> None:
+    def _init_embedding(self) -> HuggingFaceEmbeddings:
         """Initialize HuggingFace Embeddings."""
-        self._embedding = HuggingFaceEmbeddings(model_name=self._model_name)
+        return HuggingFaceEmbeddings(model_name=self._model_name)
 
     def embed_query(self, text: str) -> Any:
         """ Return text vectorized by HuggingFace Embeddings

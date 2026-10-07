@@ -2,8 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.common.constants import Settings
+from src.llm.engine import OllamaEngine
 from src.llm.models import SiemAlertState
-from src.llm.adapters import OllamaAdapter
 from src.llm.schemas import SeverityLevel, RemediationAction
 
 
@@ -16,14 +17,16 @@ def mock_llm_client() -> MagicMock:
 
 
 @pytest.fixture
-def llm_adapter(mock_llm_client: MagicMock) -> OllamaAdapter:
-    """Initialize OllamaAdapter by mocking its internal structured model initialization."""
+def llm_engine(mock_llm_client: MagicMock, mock_settings: Settings) -> OllamaEngine:
+    """Initialize OllamaEngine by mocking its internal structured model initialization."""
     # Patch the private method to return our mock runner directly, bypassing HTTPX calls entirely
     with patch.object(
-        OllamaAdapter, "_init_structured_model", return_value=mock_llm_client
+        OllamaEngine, "_init_llm", return_value=mock_llm_client
     ):
-        return OllamaAdapter(
-            model_name="llama3.1:latest", base_url="http://localhost:11434"
+        return OllamaEngine(
+            base_url=mock_settings.LLM_URL,
+            model_name=mock_settings.LLM_MODEL,
+            temperature=mock_settings.LLM_TEMPERATURE
         )
 
 

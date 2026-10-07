@@ -5,7 +5,7 @@ from typing import Any
 class IEmbeddingEngine(ABC):
     """Common interface for all embedding engines."""
     @abstractmethod
-    def _init_embedding(self) -> None:
+    def _init_embedding(self) -> Any:
         """Function to initialize the embedding,
         it is easier for testing it if the instantiation is outside of the __init__ method."""
 

@@ -76,6 +76,21 @@ class Settings(BaseModel):
         validation_alias="EMBEDDING_MODEL_NAME",
         description="Embedding model to use, ex: all-MiniLM-L6-v2, all-mpnet-base-v2 etc..."
     )
-
+    LLM_ENGINE: str = Field(
+        validation_alias="LLM_ENGINE",
+        description="LLM engine to use, ex: ollama, Mistral etc..."
+    )
+    LLM_MODEL: str = Field(
+        validation_alias="LLM_MODEL",
+        description="LLM model tu use, ex: llama3.1, mistral7b etc..."
+    )
+    LLM_URL: str = Field(
+        validation_alias="LLM_URL",
+        description="URL of the LLM engine to use."
+    )
+    LLM_TEMPERATURE: float = Field(
+        validation_alias="LLM_TEMPERATURE",
+        description="Indication for the degree of freedom of the model."
+    )
 
     model_config = ConfigDict(extra="ignore", frozen=True)

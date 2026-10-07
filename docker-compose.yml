@@ -1,6 +1,6 @@
 x-redis-creds: &redis-creds
   REDIS_USERNAME: "default"
-  REDIS_PASSWORD: "uAknMMvZDYm7HhhaWPp3" # <= i know ...
+  REDIS_PASSWORD: "uAknMMvZDYm7HhhaWPp3" # <= I know, should be in a vault etc ... it's just a PoC
 
 services:
   web:
@@ -29,6 +29,10 @@ services:
       REDIS_VECTOR_POOL_DB_ID: 1
       EMBEDDING_ENGINE: "huggingface"
       EMBEDDING_MODEL_NAME: "all-MiniLM-L6-v2"
+      LLM_ENGINE: "ollama"
+      LLM_MODEL: "llama3.1"
+      LLM_URL: "http://localhost:11434"
+      LLM_TEMPERATURE: 0.0
     command: uv run fastapi dev src/main.py --host 0.0.0.0 --port 8080
     depends_on:
       - redis
@@ -47,7 +51,7 @@ services:
     networks:
       - cyber-agent-network
 
-  # --- Cache | Checkpointer | Vector database ---
+  # --- Cache | Checkpoint | Vector database ---
   redis:
     image: redis/redis-stack-server:latest
     container_name: cyber-agent-redis
