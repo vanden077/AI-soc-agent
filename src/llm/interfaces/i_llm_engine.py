@@ -22,15 +22,6 @@ class ILlmEngine(ABC):
         :return: An instance of the provided response_schema class.
         """
 
-    # @staticmethod
-    # @abstractmethod
-    # def _format_message(state: Any) -> list[tuple[str, str]]:
-    #     """Prepares and formats system and user messages for the LLM."""
-    #
-    # @abstractmethod
-    # def analyze_event(self, state: Any) -> Any:
-    #     """Analyzes the current event and returns a valid pydantic model."""
-
     # Add any other interfaces function related to any other llm needed below
 
     @property
