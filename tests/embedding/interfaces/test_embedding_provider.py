@@ -1,5 +1,5 @@
 import pytest
-from src.embedding.common.embedding_provider import EmbeddingProvider
+from src.embedding.interfaces.embedding_provider import EmbeddingProvider
 
 def test_embedding_provider_contains_expected_engines():
     """Check implemented engines are present"""

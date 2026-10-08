@@ -1,6 +1,6 @@
 import pytest
 
-from src.llm.common.llm_provider import LlmProvider
+from src.llm.interfaces.llm_provider import LlmProvider
 
 
 def test_embedding_provider_contains_expected_engines():

@@ -3,9 +3,10 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
+from src.api.dev_setup import configure_dev_helpers
 from src.embedding import EmbeddingManager
 from src.common.constants import Settings
-from src.common.dev_setup import configure_dev_helpers
+
 from src.common.cache import RedisClient, RedisVectorClient
 
 from src.data_pipeline import MitrePipeline
@@ -21,9 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(ai_soc_agent: FastAPI):
     logger.info("⚙️ Load ENV vars into FastAPI context...")
     settings = Settings.model_validate(os.environ)
+
+    logger.info(f"Current environment is: {settings.ENV}")
+
+    # if dev environment, add redirection from / to /docs (=from a 404 to the swagger)
+    if settings.ENV == "development":
+        configure_dev_helpers(ai_soc_agent)
 
     logger.info("⚙️ Create connexion pool to Redis for JSON documents...")
     json_cache = RedisClient(
@@ -88,7 +95,3 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="AI Soc agent.", lifespan=lifespan)
 app.include_router(health_route)
-
-# if dev environment, add redirection from / to /docs (=from a 404 to the swagger)
-if os.getenv("ENV") == "development":
-    configure_dev_helpers(app)
