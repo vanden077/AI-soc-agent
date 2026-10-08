@@ -1,4 +1,4 @@
-from common.cache import RedisClient
+from src.common.cache import RedisClient
 
 
 def test_redis_client_insert_and_get(json_cache: RedisClient, flush_json_cache):

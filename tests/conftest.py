@@ -17,7 +17,7 @@ CACHE_MAX_POOL_SIZE = 10
 def _session_settings() -> Settings:
     """Instanciate only once per test session"""
     return Settings(
-        ENV="unit tests",
+        ENV="TESTS",
         MITRE_STIX_URL="https://fake_mitre_stix_url.com",
         MITRE_JSON_PATH=Path("fake_mitre_json_path"),
         REDIS_HOST="127.0.0.1",

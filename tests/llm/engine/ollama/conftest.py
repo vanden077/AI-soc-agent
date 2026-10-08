@@ -1,11 +1,12 @@
+from typing import Callable, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.common.constants import Settings
 from src.llm.engine import OllamaEngine
-from src.llm.models import SiemAlertState
-from src.llm.schemas import SeverityLevel, RemediationAction
+from soc_agent.models import SiemAlertState
+from soc_agent.schemas import SeverityLevel, RemediationAction
 
 
 @pytest.fixture
@@ -31,6 +32,28 @@ def llm_engine(mock_llm_client: MagicMock, mock_settings: Settings) -> OllamaEng
 
 
 @pytest.fixture
+def configure_llm_mock(mock_llm_client: MagicMock) -> Callable[..., MagicMock]:
+    """
+    Factory fixture to dynamically configure the chained LangChain mock
+    (with_structured_output().invoke) without repeating the boilerplate.
+
+    Allows setting either a fixed 'return_value' or a dynamic 'side_effect'.
+    """
+    def _configure(return_value: Any = None, side_effect: Any = None) -> MagicMock:
+        # create mock of LangChain RunnableSequence
+        mock_structured_pipeline = MagicMock()
+
+        if side_effect is not None:
+            mock_structured_pipeline.invoke.side_effect = side_effect
+        else:
+            mock_structured_pipeline.invoke.return_value = return_value
+
+        # Link LangChain mock with the call to structured_output to return the sequence
+        mock_llm_client.with_structured_output.return_value = mock_structured_pipeline
+        return mock_structured_pipeline
+    return _configure
+
+@pytest.fixture
 def valid_analysis_payload() -> dict:
     """Provide a raw payload strictly matching EventAnalysis fields and Enum constraints."""
     return {
@@ -50,21 +73,40 @@ def valid_analysis_payload() -> dict:
 
 
 @pytest.fixture
-def sample_cyber_state() -> SiemAlertState:
+def sample_prompt() -> list[tuple[str, str]]:
     """Provide a valid mock instance of SiemAlertState matching Python 3.13 modern TypedDict."""
-    return {
-        "raw_alert": {
+    system_prompt = (
+        "You are a senior SOC analyst and expert threat hunter.\n"
+        "Analyze the provided SIEM alert and correlated logs to produce a strictly structured event analysis.\n\n"
+        "Mandatory rules:\n"
+        "1. Rely only on clear facts from the input data.\n"
+        "2. Fill every required field in the analysis schema.\n"
+        "3. Do not invent extra fields (the output schema forbids unknown properties)."
+    )
+
+    siem_alert = SiemAlertState(
+        raw_alert={
             "event_id": 999,
             "source": "siem_rdp_logs",
             "message": "Multiple failed authentication attempts detected",
         },
-        "correlated_logs": [
+        correlated_logs=[
             {
                 "timestamp": "2026-09-10T14:32:00Z",
                 "src_ip": "192.168.1.50",
                 "status": "failure",
             }
         ],
-        "analysis": None,  # Strictly compliant with EventAnalysis | None union contract
-        "metadata": {"ingestion_engine": "wazuh", "analyst_group": "tier_1"},
-    }
+        analysis=None,
+        metadata={"ingestion_engine": "wazuh", "analyst_group": "tier_1"}
+    )
+
+    user_content = (
+        f"--- INITIAL SIEM ALERT ---\n{siem_alert['raw_alert']}\n\n"
+        f"--- SELECTED CORRELATED LOGS ---\n{siem_alert['correlated_logs']}"
+    )
+
+    return [("system", system_prompt), ("user", user_content)]
+
+
+

@@ -2,7 +2,7 @@ import pytest
 from copy import deepcopy
 from typing import Any
 
-from src.llm.schemas import EventAnalysis, SeverityLevel, MitreAttackCorrelation, RemediationAction
+from soc_agent.schemas import EventAnalysis, SeverityLevel, MitreAttackCorrelation, RemediationAction
 from tests.dataset_test import (
     EVENT_ANALYSIS_SCHEMA,
     MITRE_ATTACK_CORRELATION_SCHEMA,

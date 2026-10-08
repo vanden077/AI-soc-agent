@@ -3,7 +3,7 @@ from typing import Any
 
 from langchain_redis import RedisConfig, RedisVectorStore
 
-from src.embedding.common.i_embedding_engine import IEmbeddingEngine
+from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 from .common.pipeline_utils import PipelineUtils
 from .exceptions import MitreDownloadError
 from .mitre_parser import MitreParser

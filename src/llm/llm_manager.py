@@ -1,6 +1,6 @@
 from src.llm.engine import OllamaEngine
-from src.llm.common.llm_provider import LlmProvider
-from src.llm.common.i_llm_engine import ILlmEngine
+from src.llm.interfaces.llm_provider import LlmProvider
+from src.llm.interfaces.i_llm_engine import ILlmEngine
 
 
 class LlmManager:

@@ -1,8 +1,8 @@
 import pytest
 from copy import deepcopy
 
-from src.llm.models import SiemAlertState
-from src.llm.schemas import EventAnalysis
+from soc_agent.models import SiemAlertState
+from soc_agent.schemas import EventAnalysis
 from tests.dataset_test import (
     EVENT_ANALYSIS_SCHEMA,
     MITRE_ATTACK_CORRELATION_SCHEMA,

@@ -1,6 +1,6 @@
 from typing import Any, TypedDict
 
-from llm.schemas import EventAnalysis
+from soc_agent.schemas import EventAnalysis
 
 
 class SiemAlertState(TypedDict):

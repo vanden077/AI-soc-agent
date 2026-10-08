@@ -1,6 +1,6 @@
 from typing import Any
 from langchain_huggingface import HuggingFaceEmbeddings
-from src.embedding.common.i_embedding_engine import IEmbeddingEngine
+from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 
 
 class HuggingFaceEngine(IEmbeddingEngine):

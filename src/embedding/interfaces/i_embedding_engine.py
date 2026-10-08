@@ -13,7 +13,7 @@ class IEmbeddingEngine(ABC):
     def embed_query(self, text: str) -> Any:
         """Run vector query from str"""
 
-    # Add any other common function related to any other embedding needed below
+    # Add any other interfaces function related to any other embedding needed below
 
     @property
     @abstractmethod

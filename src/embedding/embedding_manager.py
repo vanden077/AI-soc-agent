@@ -1,6 +1,6 @@
 from embedding.engine.huggingface.huggingface_engine import HuggingFaceEngine
-from src.embedding.common.i_embedding_engine import IEmbeddingEngine
-from src.embedding.common.embedding_provider import EmbeddingProvider
+from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
+from src.embedding.interfaces.embedding_provider import EmbeddingProvider
 
 class EmbeddingManager:
     """

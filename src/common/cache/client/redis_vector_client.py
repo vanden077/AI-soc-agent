@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from redisvl.index import SearchIndex
 from redisvl.query import VectorQuery
 
-from src.embedding.common.i_embedding_engine import IEmbeddingEngine
+from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 from src.common.cache.driver.redis_driver import RedisDriver
 
 logger = logging.getLogger()

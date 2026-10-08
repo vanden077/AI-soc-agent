@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from src.llm.schemas import MitreAttackCorrelation
+from soc_agent.schemas import MitreAttackCorrelation
 from tests.dataset_test import MITRE_ATTACK_CORRELATION_SCHEMA
 from pydantic import ValidationError
 
