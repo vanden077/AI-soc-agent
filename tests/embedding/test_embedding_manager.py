@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 from langchain_huggingface import HuggingFaceEmbeddings
 
-from embedding.engine import HuggingFaceEngine
+from src.embedding.engine import HuggingFaceEngine
 from src.common.constants import Settings
 from src.embedding.embedding_manager import EmbeddingManager
 

@@ -7,7 +7,7 @@ from src.api.dev_setup import configure_dev_helpers
 from src.embedding import EmbeddingManager
 from src.common.constants import Settings
 
-from src.common.cache import RedisClient, RedisVectorClient
+from src.common.cache import JsonCacheClient, VectorCacheClient
 
 from src.data_pipeline import MitrePipeline
 
@@ -32,8 +32,8 @@ async def lifespan(ai_soc_agent: FastAPI):
     if settings.ENV == "development":
         configure_dev_helpers(ai_soc_agent)
 
-    logger.info("⚙️ Create connexion pool to Redis for JSON documents...")
-    json_cache = RedisClient(
+    logger.info("⚙️ Create JSON connexion pool to Redis...")
+    json_cache = JsonCacheClient(
         host=settings.REDIS_HOST,
         port=settings.REDIS_PORT,
         username=settings.REDIS_USERNAME,
@@ -54,22 +54,22 @@ async def lifespan(ai_soc_agent: FastAPI):
     logger.info(f"🚀 Embedding engine {emb.engine.engine_name}, model {emb.engine.model_name} is ready.")
 
     # create a connexion pool to Redis for vectorized documents
-    logger.info("⚙️ Create connexion pool to Redis for vectorized documents...")
-    vector_cache = RedisVectorClient(
-        embedding_model=emb.engine,
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        username=settings.REDIS_USERNAME,
-        password=settings.REDIS_PASSWORD,
-        max_size_pool=settings.REDIS_VECTOR_POOL_SIZE,
-        retry_strategy=settings.REDIS_RETRY_STRATEGY,
-        ssl=settings.REDIS_SSL,
-        decode_responses=False,
-        db=settings.REDIS_VECTOR_POOL_DB_ID
-    )
-
-    # start vector pool
-    vector_cache.init_pool()
+    logger.info("⚙️ Create Vector connexion pool to Redis...")
+    # vector_cache = RedisVectorClient(
+    #     embedding_model=emb.engine,
+    #     host=settings.REDIS_HOST,
+    #     port=settings.REDIS_PORT,
+    #     username=settings.REDIS_USERNAME,
+    #     password=settings.REDIS_PASSWORD,
+    #     max_size_pool=settings.REDIS_VECTOR_POOL_SIZE,
+    #     retry_strategy=settings.REDIS_RETRY_STRATEGY,
+    #     ssl=settings.REDIS_SSL,
+    #     decode_responses=False,
+    #     db=settings.REDIS_VECTOR_POOL_DB_ID
+    # )
+    #
+    # # start vector pool
+    # vector_cache.init_pool()
 
     # TODO run mitre pipeline at startup + add route to manually call it
     # mitre_pipeline = MitrePipeline(embedding_model=emb.engine, settings=settings)
@@ -82,14 +82,14 @@ async def lifespan(ai_soc_agent: FastAPI):
         "settings": settings,
         "embedding_engine": emb.engine,
         "json_cache": json_cache,
-        "vector_cache": vector_cache
+        #"vector_cache": vector_cache
     }
 
     if json_cache is not None:
         json_cache.close()
 
-    if vector_cache is not None:
-        vector_cache.close()
+    # if vector_cache is not None:
+    #     vector_cache.close()
 
     logger.info("👋 Gracefully closed app... Bye")
 

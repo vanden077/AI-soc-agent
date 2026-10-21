@@ -76,6 +76,10 @@ class Settings(BaseModel):
         validation_alias="EMBEDDING_MODEL_NAME",
         description="Embedding model to use, ex: all-MiniLM-L6-v2, all-mpnet-base-v2 etc..."
     )
+    EMBEDDING_DIMENSION: int = Field(
+        validation_alias="EMBEDDING_DIMENSION",
+        description="Strict geometric vector dimension required by the EMBEDDING_MODEL_NAME (e.g., 384 for all-MiniLM-L6-v2, 768, 1536). Must match the active Redis index configuration."
+    )
     LLM_ENGINE: str = Field(
         validation_alias="LLM_ENGINE",
         description="LLM engine to use, ex: ollama, Mistral etc..."

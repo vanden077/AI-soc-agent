@@ -1,17 +1,16 @@
 import logging
-from typing import Any
+from typing import Any, Mapping
 
 from src.common.cache.driver.redis_driver import RedisDriver
 
 logger = logging.getLogger()
 
 
-class RedisClient(RedisDriver):
+class JsonCacheClient(RedisDriver):
     """
-    Redis client implements Redis driver abstract methods.
-    Get or insert data to Redis server.
+    Redis client for JSON documents.
     """
-    def get(self, key: str) -> dict[str, Any] | None:
+    def get(self, key: str) -> str | int | float | bool | None | Mapping[str, Any] | list[Any]:
         """
         Get data from cache
         :param key: the key to retrieve

@@ -1,4 +1,6 @@
-from embedding.engine.huggingface.huggingface_engine import HuggingFaceEngine
+from typing import Any
+
+from src.embedding.engine.huggingface.huggingface_engine import HuggingFaceEngine
 from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 from src.embedding.interfaces.embedding_provider import EmbeddingProvider
 
@@ -7,7 +9,7 @@ class EmbeddingManager:
     Factory pattern for embedding engines.
     """
     def __init__(self, provider: str, model_name: str):
-        self._engine: IEmbeddingEngine
+        self._engine: IEmbeddingEngine[Any]
         self._provider = provider
         self._model_name = model_name
         self._check_embedding_provider_availability()
@@ -31,6 +33,6 @@ class EmbeddingManager:
                 raise NotImplementedError(f"Engine '{provider_enum}' is listed but not yet implemented.")
 
     @property
-    def engine(self) -> IEmbeddingEngine:
+    def engine(self) -> IEmbeddingEngine[Any]:
         """Get the embedding engine"""
         return self._engine

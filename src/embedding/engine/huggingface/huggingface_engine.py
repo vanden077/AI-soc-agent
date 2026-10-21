@@ -1,9 +1,8 @@
-from typing import Any
 from langchain_huggingface import HuggingFaceEmbeddings
 from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 
 
-class HuggingFaceEngine(IEmbeddingEngine):
+class HuggingFaceEngine(IEmbeddingEngine[HuggingFaceEmbeddings]):
     """HuggingFace Embedding engine"""
 
     def __init__(self, model_name: str):
@@ -15,7 +14,7 @@ class HuggingFaceEngine(IEmbeddingEngine):
         """Initialize HuggingFace Embeddings."""
         return HuggingFaceEmbeddings(model_name=self._model_name)
 
-    def embed_query(self, text: str) -> Any:
+    def embed_query(self, text: str) -> list[float]:
         """ Return text vectorized by HuggingFace Embeddings
         :param text: str to vectorize
         :return: vectorized text

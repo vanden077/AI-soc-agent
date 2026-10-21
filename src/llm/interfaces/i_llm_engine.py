@@ -1,15 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar, Type
+from typing import TypeVar, Type, Generic
 
 from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
+_TLLMEngine = TypeVar("_TLLMEngine", covariant=True)
 
-class ILlmEngine(ABC):
+class ILlmEngine(ABC, Generic[_TLLMEngine]):
     """Common interface for all llm engines."""
 
     @abstractmethod
-    def _init_llm(self) -> Any:
+    def _init_llm(self) -> _TLLMEngine:
         """initialization method to allow clean mocking boundaries for structured output."""
 
     @abstractmethod

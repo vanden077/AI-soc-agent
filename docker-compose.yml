@@ -29,6 +29,7 @@ services:
       REDIS_VECTOR_POOL_DB_ID: 1
       EMBEDDING_ENGINE: "huggingface"
       EMBEDDING_MODEL_NAME: "all-MiniLM-L6-v2"
+      EMBEDDING_DIMENSION: 384
       LLM_ENGINE: "ollama"
       LLM_MODEL: "llama3.1"
       LLM_URL: "http://localhost:11434"

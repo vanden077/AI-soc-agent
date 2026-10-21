@@ -1,12 +1,8 @@
 from pathlib import Path
 from unittest.mock import patch
-
 import pytest
-from fakeredis import FakeRedis, FakeServer
 from langchain_huggingface import HuggingFaceEmbeddings
-
 from src.embedding import EmbeddingManager
-from src.common.cache import RedisClient, RedisVectorClient
 from src.common.constants import Settings
 
 
@@ -56,88 +52,113 @@ def mock_embedding_engine(mock_settings: Settings) -> EmbeddingManager:
 
 
 ########## REDIS ##########
-@pytest.fixture(scope="function", autouse=True)
-def mock_redis_driver(mocker):
-    """
-    Global fixture replacing Redis instance by FakeRedis.
-    Simulates ONE single Redis server (FakeServer) for the test.
-    The clients (JSON and Vector) will be completely isolated via their
-    respective connection pools and logical 'db' indexes.
-    """
-    single_redis_server = FakeServer()
-
-    def _shared_server_factory(*args, **kwargs):
-        # each client will be connected to this server, but through isolated connexions pools.
-        kwargs["server"] = single_redis_server
-        return FakeRedis(*args, **kwargs)
-
-    return mocker.patch(
-        "src.common.cache.driver.redis_driver.Redis",
-        side_effect=_shared_server_factory
-    )
+# @pytest.fixture(scope="function", autouse=True)
+# def mock_redis_driver(mocker):
+#     """
+#     Global fixture replacing Redis instance by FakeRedis.
+#     Simulates ONE single Redis server (FakeServer) for the test.
+#     The clients (JSON and Vector) will be completely isolated via their
+#     respective connection pools and logical 'db' indexes.
+#     """
+#     single_redis_server = FakeServer()
+#
+#     def _shared_server_factory(*args, **kwargs):
+#         # each client will be connected to this server, but through isolated connexions pools.
+#         kwargs["server"] = single_redis_server
+#         return FakeRedis(*args, **kwargs)
+#
+#     return mocker.patch(
+#         "src.common.cache.driver.redis_driver.Redis",
+#         side_effect=_shared_server_factory
+#     )
 
 ########## REDIS JSON CLIENT ##########
-@pytest.fixture(scope="function")
-def json_cache(mock_settings: Settings):
-    """
-    Fixture simulating a fake Redis server usable through our custom redis_client
-    FakeRedis is a pure-Python implementation of the Redis key-value store.
-    https://fakeredis.readthedocs.io/en/latest/
-    """
-    cache_client = None
+# @pytest.fixture(scope="function")
+# def json_cache(mock_settings: Settings):
+#     """
+#     Fixture simulating a fake Redis server usable through our custom redis_client
+#     FakeRedis is a pure-Python implementation of the Redis key-value store.
+#     https://fakeredis.readthedocs.io/en/latest/
+#     """
+#     cache_client = None
+#
+#     try:
+#         cache_client = RedisClient(
+#             host=mock_settings.REDIS_HOST,
+#             port=mock_settings.REDIS_PORT,
+#             username=mock_settings.REDIS_USERNAME,
+#             password=mock_settings.REDIS_PASSWORD,
+#             max_size_pool=mock_settings.REDIS_JSON_POOL_SIZE,
+#             retry_strategy=mock_settings.REDIS_RETRY_STRATEGY,
+#             decode_responses=True,
+#             ssl=mock_settings.REDIS_SSL,
+#             db=mock_settings.REDIS_JSON_POOL_DB_ID
+#         )
+#         cache_client.init_pool()
+#     except Exception as err:  # noqa: BLE001
+#         print(f"Error Redis cache while creating connection pool: {err}")
+#     finally:
+#         yield cache_client
 
-    try:
-        cache_client = RedisClient(
-            host=mock_settings.REDIS_HOST,
-            port=mock_settings.REDIS_PORT,
-            username=mock_settings.REDIS_USERNAME,
-            password=mock_settings.REDIS_PASSWORD,
-            max_size_pool=mock_settings.REDIS_JSON_POOL_SIZE,
-            retry_strategy=mock_settings.REDIS_RETRY_STRATEGY,
-            decode_responses=True,
-            ssl=mock_settings.REDIS_SSL,
-            db=mock_settings.REDIS_JSON_POOL_DB_ID
-        )
-        cache_client.init_pool()
-    except Exception as err:  # noqa: BLE001
-        print(f"Error Redis cache while creating connection pool: {err}")
-    finally:
-        yield cache_client
 
 ########## REDIS VECTOR CLIENT ##########
-@pytest.fixture(scope="function")
-def vector_cache(mock_settings: Settings, mock_embedding_engine: EmbeddingManager):
-    """
-    Fixture simulating a fake Redis server usable through our custom redis_client
-    FakeRedis is a pure-Python implementation of the Redis key-value store.
-    https://fakeredis.readthedocs.io/en/latest/
-    """
-    cache_client = None
+# @pytest.fixture(scope="function")
+# def vector_cache(mock_settings: Settings, mock_embedding_engine: EmbeddingManager):
+#     """
+#     Fixture simulating a fake Redis server usable through our custom RedisVectorClient.
+#     Binds an in-memory RedisVL SearchIndex schema and boots cached technical metadata.
+#     """
+#     cache_client = None
+#
+#     try:
+#         cache_client = RedisVectorClient(
+#             embedding_model=mock_embedding_engine.engine,
+#             host=mock_settings.REDIS_HOST,
+#             port=mock_settings.REDIS_PORT,
+#             username=mock_settings.REDIS_USERNAME,
+#             password=mock_settings.REDIS_PASSWORD,
+#             max_size_pool=mock_settings.REDIS_VECTOR_POOL_SIZE,
+#             retry_strategy=mock_settings.REDIS_RETRY_STRATEGY,
+#             decode_responses=False,
+#             ssl=mock_settings.REDIS_SSL,
+#             db=mock_settings.REDIS_VECTOR_POOL_DB_ID
+#         )
+#         cache_client.init_pool()
+#
+#         # Construction d'un schéma d'index minimal pour alimenter FakeRedis et RedisVL
+#         test_schema = {
+#             "index": {"name": mock_settings.INDEX_NAME, "prefix": "mitre"},
+#             "fields": [
+#                 {"name": "id", "type": "tag"},
+#                 {"name": "type", "type": "tag"},
+#                 {"name": "name", "type": "text"},
+#                 {"name": "description", "type": "text"},
+#                 {"name": "platforms", "type": "text"},
+#                 {"name": "tactics", "type": "text"},
+#                 {"name": "embedding", "type": "vector", "attrs": {"dims": 384, "distance_metric": "cosine"}}
+#             ]
+#         }
+#
+#         # Instanciation de l'index réel de RedisVL branché sur notre FakeRedis binaire (DB 1)
+#         fake_search_index = SearchIndex.from_dict(
+#             test_schema,
+#             redis_client=cache_client.redis_client
+#         )
+#
+#         # Liaison de l'infrastructure et mise en cache des structures techniques (DX O(1))
+#         cache_client.set_search_index(fake_search_index)
+#         cache_client.initialize_metadata()
+#
+#     except Exception as err:  # noqa: BLE001
+#         print(f"Error Redis vector cache while creating connection pool: {err}")
+#     finally:
+#         yield cache_client
 
-    try:
-        cache_client = RedisVectorClient(
-            embedding_model=mock_embedding_engine.engine,
-            host=mock_settings.REDIS_HOST,
-            port=mock_settings.REDIS_PORT,
-            username=mock_settings.REDIS_USERNAME,
-            password=mock_settings.REDIS_PASSWORD,
-            max_size_pool=mock_settings.REDIS_VECTOR_POOL_SIZE,
-            retry_strategy=mock_settings.REDIS_RETRY_STRATEGY,
-            decode_responses=False,
-            ssl=mock_settings.REDIS_SSL,
-            db=mock_settings.REDIS_VECTOR_POOL_DB_ID
-        )
-        cache_client.init_pool()
-    except Exception as err:  # noqa: BLE001
-        print(f"Error Redis cache while creating connection pool: {err}")
-    finally:
-        yield cache_client
-
-@pytest.fixture(scope="function")
-def flush_json_cache(json_cache: RedisClient):
-    """
-    Cleanup cache between each test and release connections pool
-    """
-    if json_cache is not None:
-        json_cache.flushdb()
-        json_cache.close()
+# @pytest.fixture(scope="function")
+# def flush_json_cache(json_cache: RedisClient):
+#     """
+#     Cleanup cache between each test and release connections pool
+#     """
+#     if json_cache is not None:
+#         json_cache.flush_db()
+#         json_cache.close()

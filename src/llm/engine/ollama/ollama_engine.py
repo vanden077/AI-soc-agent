@@ -8,7 +8,7 @@ from src.llm.interfaces.i_llm_engine import ILlmEngine, T
 
 logger = logging.getLogger()
 
-class OllamaEngine(ILlmEngine):
+class OllamaEngine(ILlmEngine[ChatOllama]):
     """LLM llama 3 engine"""
 
     def __init__(self, base_url: str, model_name: str, temperature: float = 0.0):

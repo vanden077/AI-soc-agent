@@ -20,7 +20,7 @@ this trap from day one. By strictly isolating both production code and test
 infrastructure within highly cohesive, loosely coupled domain boundaries (e.g.,
 this 'api' module), we ensure that the entire domain remains 100% portable.
 
-HOW IT WORKS & WHY IT SHINES:
+HOW IT WORKS:
 1. Complete Encapsulation: The custom pytest hooks (`pytest_configure`) and
    the semantic sugar decorators (`@dev_mode`, `@prod_mode`) are declared and
    contained strictly within this local `conftest.py`. If this directory is ever

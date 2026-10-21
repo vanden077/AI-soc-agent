@@ -1,7 +1,8 @@
-from src.common.cache import RedisClient
+from src.common.cache import JsonCacheClient
 
 
-def test_redis_client_insert_and_get(json_cache: RedisClient, flush_json_cache):
+def test_redis_client_insert_and_get(json_cache: JsonCacheClient, flush_json_cache):
+    """Insert and get a JSON document"""
     cache_key = "test"
     data = {"test": "test"}
     ttl = 10
@@ -13,7 +14,8 @@ def test_redis_client_insert_and_get(json_cache: RedisClient, flush_json_cache):
     assert res_get == data
 
 
-def test_redis_client_get_exception(mocker, json_cache: RedisClient, flush_json_cache, caplog):
+def test_redis_client_get_exception(mocker, json_cache: JsonCacheClient, flush_json_cache, caplog):
+    """Make get command crash from driver"""
     redis_mock = mocker.patch(
         "redis.commands.json.commands.JSONCommands.get",
         side_effect=Exception("Mocked exception"),
@@ -33,7 +35,8 @@ def test_redis_client_get_exception(mocker, json_cache: RedisClient, flush_json_
     )
 
 
-def test_redis_client_insert_exception(mocker, json_cache: RedisClient, caplog):
+def test_redis_client_insert_exception(mocker, json_cache: JsonCacheClient, caplog):
+    """Make set command crash from driver"""
     redis_mock = mocker.patch(
         "redis.commands.json.commands.JSONCommands.set",
         side_effect=Exception("Mocked exception"),
@@ -51,7 +54,8 @@ def test_redis_client_insert_exception(mocker, json_cache: RedisClient, caplog):
     )
 
 
-def test_redis_client_delete(json_cache: RedisClient, flush_json_cache):
+def test_redis_client_delete(json_cache: JsonCacheClient, flush_json_cache):
+    """Insert and delete a JSON document"""
     cache_key = "test"
     data = {"test": "test"}
     ttl = 10
@@ -65,13 +69,15 @@ def test_redis_client_delete(json_cache: RedisClient, flush_json_cache):
     assert res_delete == 1
 
 
-def test_redis_client_nothing_to_delete(json_cache: RedisClient, flush_json_cache):
+def test_redis_client_nothing_to_delete(json_cache: JsonCacheClient, flush_json_cache):
+    """Check deleting an unexisting document don't crash and return 0 (number of documents deleted)"""
     cache_key = "testeuuuu"
     res_delete = json_cache.delete(key=cache_key)
     assert res_delete == 0
 
 
-def test_redis_client_delete_no_pool(mocker, json_cache: RedisClient, caplog):
+def test_redis_client_delete_exception(mocker, json_cache: JsonCacheClient, caplog):
+    """Make delete command crash from driver"""
     redis_mock = mocker.patch(
         "redis.commands.core.BasicKeyCommands.delete",
         side_effect=Exception("Mocked exception"),
@@ -87,7 +93,8 @@ def test_redis_client_delete_no_pool(mocker, json_cache: RedisClient, caplog):
     )
 
 
-def test_redis_client_get_key_none(json_cache: RedisClient, flush_json_cache):
+def test_redis_client_get_key_none(json_cache: JsonCacheClient, flush_json_cache):
+    """Test getting a key of type None don't crash and just return None"""
     cache_key = "test"
     data = {"test": "test"}
     ttl = 10

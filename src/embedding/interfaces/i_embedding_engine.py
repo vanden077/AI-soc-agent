@@ -1,16 +1,17 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TypeVar, Generic
 
+_EmbEngine = TypeVar("_EmbEngine", covariant=True)
 
-class IEmbeddingEngine(ABC):
+class IEmbeddingEngine(ABC, Generic[_EmbEngine]):
     """Common interface for all embedding engines."""
     @abstractmethod
-    def _init_embedding(self) -> Any:
+    def _init_embedding(self) -> _EmbEngine:
         """Function to initialize the embedding,
         it is easier for testing it if the instantiation is outside of the __init__ method."""
 
     @abstractmethod
-    def embed_query(self, text: str) -> Any:
+    def embed_query(self, text: str) -> list[float]:
         """Run vector query from str"""
 
     # Add any other interfaces function related to any other embedding needed below
@@ -27,5 +28,5 @@ class IEmbeddingEngine(ABC):
 
     @property
     @abstractmethod
-    def embedding(self) -> Any:
+    def embedding(self) -> _EmbEngine:
         """Get the engine instance"""
