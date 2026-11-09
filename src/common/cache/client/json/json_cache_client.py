@@ -10,6 +10,9 @@ class JsonCacheClient(RedisDriver):
     """
     Redis client for JSON documents.
     """
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     def get(self, key: str) -> str | int | float | bool | None | Mapping[str, Any] | list[Any]:
         """
         Get data from cache

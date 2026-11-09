@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Any
 
 _EmbEngine = TypeVar("_EmbEngine", covariant=True)
 
@@ -13,6 +13,13 @@ class IEmbeddingEngine(ABC, Generic[_EmbEngine]):
     @abstractmethod
     def embed_query(self, text: str) -> list[float]:
         """Run vector query from str"""
+
+    @abstractmethod
+    def embed_documents(self, texts: list[str]) -> list[list[float]] | Any:
+        """
+        Run high-performance bulk vector generation from a list of strings.
+        Leverages underlying engine optimizations (AVX/SIMD/Batch size).
+        """
 
     # Add any other interfaces function related to any other embedding needed below
 

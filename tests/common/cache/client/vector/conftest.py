@@ -1,8 +1,6 @@
 from typing import Any
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock
 import pytest
-from src.common.cache.driver.redis_driver import RedisDriver
-from src.common.cache import VectorCacheClient
 from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 
 class FakeRedisDocument:
@@ -38,36 +36,3 @@ def mock_embedding_engine() -> MagicMock:
     engine = MagicMock(spec=IEmbeddingEngine)
     engine.embed_query.return_value = [0.1] * 384
     return engine
-
-
-@pytest.fixture(scope="function")
-def vector_cache(mock_redis_driver, mock_embedding_engine, mock_redis_vl_search_index: MagicMock):
-    """
-    Instantiate VectorCacheClient in its raw, nominal post-construction state.
-    Pre-patches only the inherited parent search_index property to route queries to the mock index.
-    The cache client is yield with a valid vector fields catalog (see mock_redis_vl_search_index from cache.conftest)
-    """
-    vector_client = VectorCacheClient(
-        host="test",
-        port=1,
-        username="username",
-        password="test",
-        max_size_pool=1,
-        retry_strategy=1,
-        decode_responses=False,
-        ssl=False,
-        db=1,
-        embedding_engine=mock_embedding_engine,
-        index_name="mitre_attack_v1"
-    )
-    vector_client.init_pool()
-
-    # We ONLY bridge the parent index descriptor property.
-    # No lifespans routines or catalog logic are triggered here.
-    with patch.object(
-        RedisDriver,
-        "search_index",
-        new_callable=PropertyMock,
-        return_value=mock_redis_vl_search_index
-    ):
-        yield vector_client

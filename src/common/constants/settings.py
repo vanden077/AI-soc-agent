@@ -1,5 +1,5 @@
 from pathlib import Path
-from pydantic import Field, BaseModel, ConfigDict
+from pydantic import Field, BaseModel, ConfigDict, computed_field
 
 
 class Settings(BaseModel):
@@ -10,12 +10,25 @@ class Settings(BaseModel):
         description="Current environment."
     )
     MITRE_STIX_URL: str = Field(
+        default="https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack-",
         validation_alias="MITRE_STIX_URL",
         description="Download URL to get up to date MITRE STIX."
     )
     MITRE_JSON_PATH: Path = Field(
         validation_alias="MITRE_JSON_PATH",
         description="Local path to the MITRE JSON file.")
+    MITRE_INDEX_SCHEMA_PATH: str = Field(
+        validation_alias="MITRE_INDEX_SCHEMA_PATH",
+        description="Local path to the YAML index schema for RedisVL.")
+    MITRE_SEMANTIC_HASHES_KEY: str = Field(
+        validation_alias="MITRE_SEMANTIC_HASHES_KEY",
+        description="Key targeting a simple hash table in cache storing "
+                    "a unique mitre identifier and its fingerprint hash.")
+    MITRE_RELEASE_TAG: str = Field(
+        default="19.2",
+        validation_alias="MITRE_RELEASE_TAG",
+        description="Immutable STIX matrix (v19.2.0) from the official MITRE repository. "
+                    "Guarantees idempotency, reproducibility, and guards against upstream breaking changes.")
     REDIS_HOST: str | None = Field(
         default=None,
         validation_alias="REDIS_HOST",
@@ -56,9 +69,13 @@ class Settings(BaseModel):
         validation_alias="REDIS_SSL",
         description="Setup SSL for Redis."
     )
-    INDEX_NAME: str = Field(
-        validation_alias="INDEX_NAME",
-        description="Index name of the vectorized MITRE in Redis."
+    REDIS_VL_INDEX_NAME: str = Field(
+        validation_alias="REDIS_VL_INDEX_NAME",
+        description="Search index name defined in index_schema.yaml"
+    )
+    REDIS_VL_VECTOR_FIELD: str = Field(
+        validation_alias="REDIS_VL_VECTOR_FIELD",
+        description="Vector field name defined in index_schema.yaml"
     )
     REDIS_JSON_POOL_DB_ID: int = Field(
         validation_alias="REDIS_JSON_POOL_DB_ID",
@@ -96,5 +113,10 @@ class Settings(BaseModel):
         validation_alias="LLM_TEMPERATURE",
         description="Indication for the degree of freedom of the model."
     )
+
+    @computed_field
+    @property
+    def MITRE_FULL_STIX_URL(self) -> str:
+        return f"{self.MITRE_STIX_URL}{self.MITRE_RELEASE_TAG}.json"
 
     model_config = ConfigDict(extra="ignore", frozen=True)

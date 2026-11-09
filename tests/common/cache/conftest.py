@@ -56,7 +56,7 @@ def redis_driver_factory():
 
 
 @pytest.fixture
-def mock_redis_vl_search_index():
+def mock_redis_vl_search_index(mocker):
     """
     Mock nested structure of a RedisVL index.
     A RedisVL index owns a SearchIndex, and the SearchIndex owns an IndexSchema.
@@ -70,18 +70,29 @@ def mock_redis_vl_search_index():
 
     mock_index.name = "agnostic_production_index"
 
-    # 1. Non vector metadata
-    field_id = MagicMock()  # could be a tag or an id
-    field_content = MagicMock()  # could be a text
+    mock_index.exists.return_value = False
+    mock_index.create.return_value = None
 
-    # 2. Simulate vectors spaces
+    mock_index_config = MagicMock()
+    mock_index_config.prefix = "mitre"
+    mock_schema.index = mock_index_config
+
+    # Non vector metadata
+    field_id = MagicMock()  # could be a tag or an id
+    field_id.type = "tag"
+    field_content = MagicMock()  # could be a text
+    field_content.type = "text"
+
+    # Simulate vectors spaces
     field_text_vec = MagicMock()
+    field_text_vec.type = "vector"
     field_text_vec.dimension = 384
     field_text_vec.metric = "cosine"
     field_text_vec.algorithm = "hnsw"
     field_text_vec.path = "$.payload.text_embedding"
 
     field_image_vec = MagicMock()
+    field_image_vec.type = "vector"
     field_image_vec.dimension = 384
     field_image_vec.metric = "l2"
     field_image_vec.algorithm = "flat"
@@ -104,6 +115,6 @@ def mock_redis_vl_search_index():
     type(mock_schema).fields = PropertyMock(return_value=fields_dict)
     type(mock_schema).vector_fields = PropertyMock(return_value=vector_dict)
 
-    with patch("redisvl.index.SearchIndex.from_existing") as mock_factory:
-        mock_factory.return_value = mock_index
-        yield mock_index
+    mocker.patch.object(SearchIndex, "from_yaml", return_value=mock_index)
+
+    return mock_index

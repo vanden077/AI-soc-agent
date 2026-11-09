@@ -1,13 +1,9 @@
-from dataclasses import FrozenInstanceError
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from redis import Redis
-from redis.commands.search.field import VectorField
 from redisvl.index import SearchIndex
 import redis.exceptions
-
-from src.common.cache import VectorFieldSpecs
 
 
 def test_driver_instance(redis_driver_factory):
@@ -18,6 +14,7 @@ def test_driver_instance(redis_driver_factory):
     assert driver.port == 1
     assert driver.retry_strategy == 1
     assert driver.pool_size == 0  # because pool is not ready
+    assert driver.decode_responses == True
 
 
 def test_driver_pool(redis_driver_factory):
@@ -204,27 +201,62 @@ def test_list_keys_exception(redis_driver_factory, mocker, caplog):
 
 
 ####### SPECIFIC PART FOR VECTORS #######
-def test_set_search_index_lifecycle_success(redis_driver_factory, mock_redis_vl_search_index):
+def test_init_search_index_lifecycle_success(redis_driver_factory, mock_redis_vl_search_index):
     """Should successfully bind a valid SearchIndex instance to the driver."""
-    driver = redis_driver_factory(decode_responses=False)
+    driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
-    driver.set_search_index("mitre_attack_v1")
+    driver.init_search_index("mitre_attack_v1")
     assert driver.search_index is mock_redis_vl_search_index
 
-def test_set_search_index_raises_value_error_on_none(redis_driver_factory):
-    """Should strictly raise a ValueError if the injected search index is None."""
+
+def test_init_search_index_with_non_vector_client_raises(redis_driver_factory):
+    """Should strictly raise a RuntimeError while initializing SearchIndex with non-vector client."""
     driver = redis_driver_factory(decode_responses=False)
     driver.init_pool()
 
-    with pytest.raises(ValueError, match="The provided SearchIndex cannot be None."):
-        driver.set_search_index(None)
+    with pytest.raises(RuntimeError, match="Critical: This cache client instance was initialized without vector capabilities."):
+        driver.init_search_index("mitre_attack_v1")
+
+@pytest.mark.parametrize(
+    "schema_path",
+    [
+        None,
+        " ",
+        ""
+    ]
+)
+def test_init_search_index_raises_value_error_on_none(redis_driver_factory, schema_path):
+    """Should strictly raise a ValueError if the injected search index is None or empty."""
+    driver = redis_driver_factory(decode_responses=False, vector_capability=True)
+    driver.init_pool()
+
+    with pytest.raises(ValueError, match="Critical: path to RediVL index schema cannot be None or empty."):
+        driver.init_search_index(schema_path)
+
+
+@pytest.mark.parametrize(
+    "exceptions",
+    [
+        ValueError,
+        TypeError
+    ]
+)
+def test_init_search_index_crash_on_creating_schema_from_yaml(redis_driver_factory, mocker, exceptions, caplog):
+    """Should raise ValueError or TypeError if SearchIndex.from_yaml crashes"""
+    driver = redis_driver_factory(decode_responses=False, vector_capability=True)
+    driver.init_pool()
+    mocker.patch.object(SearchIndex, "from_yaml", side_effect=exceptions("error message from RedisVL"))
+
+    with pytest.raises(exceptions):
+        driver.init_search_index("mitre_attack_v1")
+    assert "Error while creating search index from mitre_attack_v1: error message from RedisVL" in caplog.messages
 
 
 def test_get_index_fields_extraction_success(redis_driver_factory, mock_redis_vl_search_index):
     """Should correctly extract the raw metadata return fields from the index schema."""
-    driver = redis_driver_factory(decode_responses=False)
+    driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
-    driver.set_search_index("mitre_attack_v1")
+    driver.init_search_index("mitre_attack_v1")
 
     extracted_fields = driver.get_index_fields()
 
@@ -232,87 +264,98 @@ def test_get_index_fields_extraction_success(redis_driver_factory, mock_redis_vl
     assert len(extracted_fields) == 4
     assert extracted_fields == ['id', 'raw_content', 'text_embedding', 'image_embedding']
 
+
+def test_get_index_field_raise_because_invalid_client(redis_driver_factory):
+    """Test getting index fields raise error because the instance has not vector capabilities."""
+    driver = redis_driver_factory(decode_responses=False)
+    driver.init_pool()
+
+    with pytest.raises(RuntimeError, match="This cache client instance was initialized without vector capabilities."):
+        driver.get_index_fields()
+
 def test_get_index_field_raise_because_not_loaded(redis_driver_factory):
     """Test getting index fields raise error because the instance is not correctly initialized."""
-    driver = redis_driver_factory(decode_responses=False)
+    driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
 
     with pytest.raises(RuntimeError, match="Search index has not been loaded into the driver yet."):
         driver.get_index_fields()
 
 
-def test_get_index_vector_fields_catalog_fail_empty_schema(redis_driver_factory, mock_redis_vl_search_index):
-    """
-    [FAIL-FAST 1]
-    Check driver fails immediately because of an empty schema and don't try to find vectors for nothing.
-    """
-    # Simulate an empty schema
-    mock_schema = mock_redis_vl_search_index.schema
-    type(mock_schema).fields = PropertyMock(return_value={})
-
-    driver = redis_driver_factory(decode_responses=False)
-    driver.init_pool()
-    driver.set_search_index("mitre_attack_v1")
-
-    with pytest.raises(RuntimeError, match="Search index schema 'agnostic_production_index' is empty."):
-        driver.get_index_vector_fields_catalog()
-
-
 def test_get_index_vector_fields_catalog_success(redis_driver_factory, mock_redis_vl_search_index):
     """
-    Normal process, everything is ok, function should return a list of VectorFieldSpecs
+    Normal process, everything is ok, function should return a dict of VectorFieldSpecs.
     """
-    driver = redis_driver_factory(decode_responses=False)
+    # Given
+    driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
-    driver.set_search_index("mitre_attack_v1")
 
+    driver.init_search_index("mitre_attack_v1")
+
+    # When
     vectors_catalog = driver.get_index_vector_fields_catalog()
 
+    # Then
     assert isinstance(vectors_catalog, dict)
     assert len(vectors_catalog) == 2
 
-    # check each objects
-    for field_name, vector_spec in vectors_catalog.items():
-        assert isinstance(vector_spec, VectorFieldSpecs)
-        if field_name == "text_embedding":
-            assert vector_spec.name == "text_embedding"
-            assert vector_spec.dimension == 384
-            assert vector_spec.metric == "cosine"
-            assert vector_spec.algorithm == "hnsw"
-            assert vector_spec.source_path == "$.payload.text_embedding"
-        else:
-            assert vector_spec.name == "image_embedding"
-            assert vector_spec.dimension == 384
-            assert vector_spec.metric == "l2"
-            assert vector_spec.algorithm == "flat"
-            assert vector_spec.source_path == "$.payload.image_embedding"
+    # Check text_embedding specs mapping
+    assert "text_embedding" in vectors_catalog
+    text_spec = vectors_catalog["text_embedding"]
+    assert text_spec.name == "text_embedding"
+    assert text_spec.dimension == 384
+    assert text_spec.metric == "cosine"
+    assert text_spec.algorithm == "hnsw"
+    assert text_spec.source_path == "$.payload.text_embedding"
 
-        # assert objects immutability
-        with pytest.raises(FrozenInstanceError):
-            setattr(vector_spec, "dimension", 768)
+    # Check image_embedding specs mapping
+    assert "image_embedding" in vectors_catalog
+    image_spec = vectors_catalog["image_embedding"]
+    assert image_spec.name == "image_embedding"
+    assert image_spec.dimension == 384
+    assert image_spec.metric == "l2"
+    assert image_spec.algorithm == "flat"
+    assert image_spec.source_path == "$.payload.image_embedding"
 
 
 def test_get_index_vector_fields_catalog_fail_no_vectors(redis_driver_factory, mock_redis_vl_search_index):
     """
-    [FAIL-FAST 2]
     Check driver raises exception if schema do not contain any vectors.
     """
     mock_schema = mock_redis_vl_search_index.schema
-
-    # prevent from FAST FAIL 1
     metadata_only = {
         "id": MagicMock(),
         "raw_content": MagicMock()
     }
     type(mock_schema).fields = PropertyMock(return_value=metadata_only)
-
     # but empty vectors
     type(mock_schema).vector_fields = PropertyMock(return_value={})
 
-    driver = redis_driver_factory(decode_responses=False)
+    driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
-    driver.set_search_index("mitre_attack_v1")
+    driver.init_search_index("mitre_attack_v1")
 
-    with pytest.raises(ValueError, match="Invalid index configuration: No explicit vector field detected in the schema for index 'agnostic_production_index'."):
+    with pytest.raises(ValueError, match="Invalid index configuration: No explicit vector field detected, please check index yaml file, it should contains at least one vector field."):
         driver.get_index_vector_fields_catalog()
 
+
+@pytest.mark.parametrize(
+    "yaml_prefix, expected_clean_prefix",
+    [
+        ("mitre:", "mitre:"),  # Well configured
+        ("mitre", "mitre:"),  # trailing double dot missing, it should be added
+    ]
+)
+def test_get_index_prefix_formatting(redis_driver_factory, mock_redis_vl_search_index, yaml_prefix,
+                                     expected_clean_prefix):
+    """Should guarantee that the returned index prefix always terminates with a structural colon."""
+    # Given
+    driver = redis_driver_factory(decode_responses=False, vector_capability=True)
+    driver.init_pool()
+
+    mock_redis_vl_search_index.schema.index.prefix = yaml_prefix
+    driver.init_search_index("mitre_attack_v1")
+    # When
+    formatted_prefix = driver.get_index_prefix()
+    # Then
+    assert formatted_prefix == expected_clean_prefix

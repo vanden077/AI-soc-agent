@@ -8,17 +8,21 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi[standard]>=0.115.0",      # Prevent dependencies conflicts
+    "fastapi[standard]>=0.115.0",  # Prevent dependencies conflicts
     "langchain-ollama>=1.1.0",
     "langgraph>=1.2.12",
-    "pydantic>=2.10.0",               # Prevent dependencies conflicts
-    "redis[hiredis]>=5.2.0",          # Prevent dependencies conflicts
+    "pydantic>=2.10.0",             # Prevent dependencies conflicts
+    "redis[hiredis]>=5.2.0",         # Prevent dependencies conflicts
     "torch>=2.2.0",
     "langchain-redis>=0.2.6",
     "langchain-huggingface>=0.1.0",
-    "sentence-transformers>=3.0.0",   # Prevent dependencies conflicts
+    "sentence-transformers>=3.0.0",  # Prevent dependencies conflicts
     "langchain-core>=1.6.6",
-    "redisvl[sentence-transformers]>=0.3.0",
+    "langchain-text-splitters>=0.3.0",      # Prevent dependencies conflicts
+    "redisvl[sentence-transformers]==0.27.2", # because there is soooo much breaking changes...
+    "ijson>=3.6.0",
+    "numpy>=2.5.4",
+    "pyyaml>=6.0.3",
 ]
 
 [[tool.uv.index]]

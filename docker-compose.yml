@@ -16,15 +16,19 @@ services:
     environment:
       <<: *redis-creds
       ENV: "development"
-      MITRE_STIX_URL: "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json"
+      MITRE_STIX_URL: "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack-"
       MITRE_JSON_PATH: "data/mitre/enterprise-attack.json"
+      MITRE_INDEX_SCHEMA_PATH: "data/index_schemas/mitre_index_schema.yaml"
+      MITRE_SEMANTIC_HASHES_KEY: "mitre:cache:semantic_hashes"
+      MITRE_RELEASE_TAG: "19.2"
       REDIS_HOST: "cyber-agent-redis"
       REDIS_PORT: 6379
       REDIS_JSON_POOL_SIZE: 5
       REDIS_VECTOR_POOL_SIZE: 20
       REDIS_RETRY_STRATEGY: 3
       REDIS_SSL: "False"
-      INDEX_NAME: "mitre_attack_v1"
+      REDIS_VL_INDEX_NAME: "mitre_attack_v1"
+      REDIS_VL_VECTOR_FIELD: "technique_vector"
       REDIS_JSON_POOL_DB_ID: 0
       REDIS_VECTOR_POOL_DB_ID: 1
       EMBEDDING_ENGINE: "huggingface"
@@ -32,25 +36,29 @@ services:
       EMBEDDING_DIMENSION: 384
       LLM_ENGINE: "ollama"
       LLM_MODEL: "llama3.1"
-      LLM_URL: "http://localhost:11434"
+      LLM_URL: "http://cyber-agent-ollama:11434"
       LLM_TEMPERATURE: 0.0
     command: uv run fastapi dev src/main.py --host 0.0.0.0 --port 8080
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - cyber-agent-network
 
-  # --- LLM Local engine ---
-  ollama:
-    image: ollama/ollama:latest
-    container_name: cyber-agent-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - cyber-agent-network
+
+
+#  # --- LLM Local engine ---
+#  ollama:
+#    image: ollama/ollama:latest
+#    container_name: cyber-agent-ollama
+#    ports:
+#      - "11434:11434"
+#    volumes:
+#      - ollama-data:/root/.ollama
+#    restart: unless-stopped
+#    networks:
+#      - cyber-agent-network
+
 
   # --- Cache | Checkpoint | Vector database ---
   redis:
@@ -64,6 +72,11 @@ services:
       - "8001:8001"
     volumes:
       - redis-cyber-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "uAknMMvZDYm7HhhaWPp3", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
     restart: always
     networks:
       - cyber-agent-network

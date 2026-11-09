@@ -1,3 +1,3 @@
-from .mitre_pipeline import MitrePipeline
+from .pipelines.stix_pipeline import StixPipeline
 
-__ALL__ = ["MitrePipeline"]
+__all__ = ['StixPipeline']

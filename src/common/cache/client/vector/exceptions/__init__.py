@@ -1,3 +1,3 @@
-from .vector_cache_exceptions import EmptyVectorError, VectorDimensionMismatchError
+from .vector_cache_exceptions import VectorDimensionMismatchError
 
-__all__ = ["EmptyVectorError", "VectorDimensionMismatchError"]
+__all__ = ["VectorDimensionMismatchError"]
