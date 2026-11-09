@@ -117,6 +117,7 @@ class StixPipeline:
         text_embedding_buffer: list[str] = []
         objects_read: int = 0
         objects_kept: int = 0
+        objects_up_to_date: int = 0
         objects_evicted: int = 0
 
         with open(self._file_path, "rb") as f:
@@ -134,7 +135,7 @@ class StixPipeline:
 
                 # [Step 2.b]
                 if not self._need_upsert(extracted_data=extracted_data):
-                    objects_evicted+=1
+                    objects_up_to_date+=1
                     continue
 
                 # [Step 2.c]
@@ -156,7 +157,10 @@ class StixPipeline:
                 yield batch_buffer, text_embedding_buffer
 
         logger.info(f"Successfully processed STIX Bundle stream: {self._file_path.name}")
-        logger.info(f"{objects_read} objects read, {objects_kept} objects kept, {objects_evicted} objects evicted")
+        logger.info(f"{objects_read} objects read, "
+                    f"{objects_kept} objects kept, "
+                    f"{objects_up_to_date} objects already up to date, "
+                    f"{objects_evicted} objects evicted")
 
 
     @staticmethod
