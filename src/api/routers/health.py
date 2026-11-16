@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 health_route = APIRouter(prefix="/health", tags=["Health"])
 logger = logging.getLogger(__name__)
 
-@health_route.get("", summary="Check api and cache are alive.")
+@health_route.get("", summary="Check api and persistence are alive.")
 async def health_check(request: Request) -> JSONResponse:
     """If all components are OK return 200 else 503."""
     json_cache = request.state.json_cache

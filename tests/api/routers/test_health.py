@@ -39,7 +39,7 @@ def test_health_check(
         expected_status: int,
         expected_json: dict[str, Any]
 ):
-    """Test health check route for cache connexions pools"""
+    """Test health check route for persistence connexions pools"""
     mock_json_cache.health.return_value = json_status
     mock_vector_cache.health.return_value = vector_status
 

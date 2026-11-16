@@ -6,6 +6,10 @@ _EmbEngine = TypeVar("_EmbEngine", covariant=True)
 class IEmbeddingEngine(ABC, Generic[_EmbEngine]):
     """Common interface for all embedding engines."""
     @abstractmethod
+    def __init__(self, model_name: str) -> None:
+        """Initialize the embedding engine class."""
+
+    @abstractmethod
     def _init_embedding(self) -> _EmbEngine:
         """Function to initialize the embedding,
         it is easier for testing it if the instantiation is outside of the __init__ method."""

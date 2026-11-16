@@ -1,9 +1,7 @@
 from pathlib import Path
-from unittest.mock import patch
 import pytest
-from langchain_huggingface import HuggingFaceEmbeddings
-from src.embedding import EmbeddingManager
-from src.common.constants import Settings
+
+from src.constants import Settings
 
 
 ########## ENV VARS ##########
@@ -15,8 +13,9 @@ def _session_settings() -> Settings:
         MITRE_STIX_URL="https://fake_mitre_stix_url/enterprise-attack-",
         MITRE_JSON_PATH=Path("fake_mitre_json_path"),
         MITRE_INDEX_SCHEMA_PATH="fake_index_schema_path",
-        MITRE_SEMANTIC_HASHES_KEY="mitre:cache:semantic_hashes",
+        MITRE_SEMANTIC_HASHES_KEY="mitre:persistence:semantic_hashes",
         MITRE_RELEASE_TAG="19.2",
+        PERSISTENCE_ENGINE="redis",
         REDIS_HOST="127.0.0.1",
         REDIS_PORT=6379,
         REDIS_USERNAME="default",

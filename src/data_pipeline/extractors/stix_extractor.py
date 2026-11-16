@@ -35,7 +35,7 @@ class StixExtractor:
         }
 
         # compute semantic hash here, this way, if there is no upsert needed during pipeline
-        # we don't have to compile object for cache ingestion, we just skip it as soon as possible.
+        # we don't have to compile object for persistence ingestion, we just skip it as soon as possible.
         extracted["semantic_hash"] = StixExtractor._compute_dict_hash(extracted)
         return extracted
 

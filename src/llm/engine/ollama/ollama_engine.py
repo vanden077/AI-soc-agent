@@ -1,5 +1,5 @@
 import logging
-from typing import Type
+from typing import Type, cast
 
 from langchain_ollama import ChatOllama
 from pydantic import ValidationError
@@ -9,7 +9,7 @@ from src.llm.interfaces.i_llm_engine import ILlmEngine, T
 logger = logging.getLogger()
 
 class OllamaEngine(ILlmEngine[ChatOllama]):
-    """LLM llama 3 engine"""
+    """LLM wrapper engine"""
 
     def __init__(self, base_url: str, model_name: str, temperature: float = 0.0):
         self._engine_name = "Ollama"
@@ -23,7 +23,10 @@ class OllamaEngine(ILlmEngine[ChatOllama]):
         return ChatOllama(
             base_url=self._base_url,
             model=self._model_name,
-            temperature=self._temperature
+            temperature=self._temperature,
+            num_ctx=2048,
+            num_predict=110,
+            keep_alive="10m"
         )
 
     def analyze_event(self, prompt: list[tuple[str, str]], response_schema: Type[T]) -> T:
@@ -37,13 +40,13 @@ class OllamaEngine(ILlmEngine[ChatOllama]):
         structured_llm = self._llm.with_structured_output(response_schema)
 
         try:
-            return structured_llm.invoke(prompt)
+            return cast(T, structured_llm.invoke(prompt))
         except ValidationError as ve:
             logger.error(f"Pydantic validation failed on LLM output: {ve.json()}")
-            raise ve
+            raise
         except Exception as e:
             logger.error(f"Ollama API call failed: {str(e)}")
-            raise e
+            raise
 
     @property
     def engine_name(self) -> str:

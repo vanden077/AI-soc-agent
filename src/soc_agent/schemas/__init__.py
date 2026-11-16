@@ -1,9 +1,9 @@
-from .event_analysis import EventAnalysis, RemediationAction, SeverityLevel
-from .mitre_attack_correlation import MitreAttackCorrelation
+from .first_guard_layer import GuardLayerVerdict
+from .threat_analysis import ThreatAnalysis
+from .mitre_technique import MitreTechnique
 
 __all__ = [
-    "EventAnalysis",
-    "RemediationAction",
-    "SeverityLevel",
-    "MitreAttackCorrelation"
+    "GuardLayerVerdict",
+    "ThreatAnalysis",
+    "MitreTechnique",
 ]

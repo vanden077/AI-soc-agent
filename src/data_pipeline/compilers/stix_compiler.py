@@ -15,7 +15,7 @@ class StixCompiler:
         Enriches the input extracted data dictionary with semantic context without mutating it.
         """
         return {
-                "id": self._stix_object["mitre_id"], # <- because ingestion cache client need a generic unique key.
+                "id": self._stix_object["mitre_id"], # <- because ingestion persistence client need a generic unique key.
                 **self._stix_object,
                 "compiled_text": self._compile_text()
             }

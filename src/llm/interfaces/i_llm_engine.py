@@ -10,6 +10,10 @@ class ILlmEngine(ABC, Generic[_TLLMEngine]):
     """Common interface for all llm engines."""
 
     @abstractmethod
+    def __init__(self, base_url: str, model_name: str, temperature: float = 0.0) -> None:
+        """Initialize the LLM engine with standard connection and inference parameters."""
+
+    @abstractmethod
     def _init_llm(self) -> _TLLMEngine:
         """initialization method to allow clean mocking boundaries for structured output."""
 

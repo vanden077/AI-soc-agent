@@ -1,15 +1,19 @@
-from typing import Any
+import importlib
+from typing import Any, Type, ClassVar
 
-from src.llm.engine import OllamaEngine
-from src.llm.interfaces.llm_provider import LlmProvider
 from src.llm.interfaces.i_llm_engine import ILlmEngine
+from src.llm.providers.llm_provider import LlmProvider
 
 
 class LlmManager:
     """
-    Factory pattern for LLM engines.
+    Factory pattern for LLM engines using lazy dynamic resolution.
     """
-    def __init__(self, base_url: str, llm_engine: str, llm_model: str, temperature: float = 0.0):
+    _ENGINE_REGISTRY: ClassVar[dict[LlmProvider, str]] = {
+        LlmProvider.OLLAMA: "src.llm.engine.ollama.ollama_engine.OllamaEngine",
+    }
+
+    def __init__(self, base_url: str, llm_engine: str, llm_model: str, temperature: float = 0.0) -> None:
         self._engine: ILlmEngine[Any]
         self._base_url = base_url
         self._llm_engine = llm_engine
@@ -18,28 +22,33 @@ class LlmManager:
         self._check_llm_provider_availability()
 
     def _check_llm_provider_availability(self) -> None:
-        """Checks whether the LLM engine provider is available, and store its instance into self._engine.
-        :raises ValueError: if the LLM engine provider is not available
-        :return: None
-        """
+        """Resolve the requested LLM provider dynamically and instantiate its engine."""
         try:
             provider_enum = LlmProvider(self._llm_engine)
         except ValueError:
             raise ValueError(
-                f"Engine '{self._llm_engine}' not supported. Available engines: {[p.value for p in LlmProvider]}")
+                f"Engine '{self._llm_engine}' not supported. Available engines: {[p.value for p in LlmProvider]}"
+            )
 
-        match provider_enum:
-            case LlmProvider.OLLAMA:
-                self._engine = OllamaEngine(
-                    base_url=self._base_url,
-                    model_name=self._llm_model,
-                    temperature=self._temperature
-                )
-            # add any other available engine here
-            case _:
-                raise NotImplementedError(f"Engine '{provider_enum}' is listed but not yet implemented.")
+        engine_path = self._ENGINE_REGISTRY.get(provider_enum)
+        if engine_path is None:
+            raise NotImplementedError(f"Engine '{provider_enum}' is listed but not yet implemented.")
+
+        engine_cls = self._load_engine_class(engine_path)
+        self._engine = engine_cls(
+            base_url=self._base_url,
+            model_name=self._llm_model,
+            temperature=self._temperature,
+        )
+
+    @staticmethod
+    def _load_engine_class(dotted_path: str) -> Type[ILlmEngine[Any]]:
+        """Dynamically import an engine class from its dotted module path."""
+        module_path, class_name = dotted_path.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        return getattr(module, class_name)
 
     @property
     def engine(self) -> ILlmEngine[Any]:
-        """Get the llm engine"""
+        """Get the active LLM engine."""
         return self._engine

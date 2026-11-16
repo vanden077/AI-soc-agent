@@ -1,56 +1,58 @@
-from unittest.mock import patch
+from types import SimpleNamespace
+from typing import Type
 
 import pytest
-from langchain_huggingface import HuggingFaceEmbeddings
 
-from src.embedding.engine import HuggingFaceEngine
-from src.common.constants import Settings
 from src.embedding.embedding_manager import EmbeddingManager
+from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
+from src.embedding.providers.embedding_provider import EmbeddingProvider
+from tests.embedding.conftest import DummyEmbeddingEngine
 
 
+def test_init_resolves_registered_provider_and_exposes_engine(
+    mocker,
+    dummy_embedding_engine_cls: Type[DummyEmbeddingEngine],
+) -> None:
+    """Nominal: resolves a valid provider from _ENGINE_REGISTRY and instantiates its engine."""
+    mocker.patch.dict(
+        EmbeddingManager._ENGINE_REGISTRY,
+        {EmbeddingProvider.HUGGINGFACE: "fake.module.DummyEmbeddingEngine"},
+        clear=True,
+    )
+    mocker.patch(
+        "src.embedding.embedding_manager.importlib.import_module",
+        return_value=SimpleNamespace(DummyEmbeddingEngine=dummy_embedding_engine_cls),
+    )
 
-def test_embedding_manager_initializes_huggingface_successfully(mock_settings: Settings):
-    """
-    Check manager return an instance of HuggingFaceEngine encapsulating an instance of HuggingFaceEmbeddings
-    """
-    # patch preventing heavy checks, 2ms instead of 19 seconds without altering behavior
-    with patch.object(HuggingFaceEmbeddings, "__init__", return_value=None) as mock_init:
-        embedding_manager = EmbeddingManager(
-            provider=mock_settings.EMBEDDING_ENGINE,
-            model_name=mock_settings.EMBEDDING_MODEL_NAME
+    manager = EmbeddingManager(
+        provider=EmbeddingProvider.HUGGINGFACE.value,
+        model_name="BAAI/bge-small-en-v1.5",
+    )
+
+    assert isinstance(manager.engine, IEmbeddingEngine)
+    assert isinstance(manager.engine, dummy_embedding_engine_cls)
+    assert manager.engine.model_name == "BAAI/bge-small-en-v1.5"
+    assert manager.engine.engine_name == "Dummy"
+
+
+def test_init_raises_value_error_on_unsupported_provider() -> None:
+    """Error: unknown provider string raises ValueError listing available engines."""
+    with pytest.raises(ValueError, match="Engine 'unknown_provider' not supported"):
+        EmbeddingManager(
+            provider="unknown_provider",
+            model_name="BAAI/bge-small-en-v1.5",
         )
-        mock_init.assert_called_once_with(model_name=mock_settings.EMBEDDING_MODEL_NAME)
-
-        # check we have access to HuggingFaceEngine
-        assert isinstance(embedding_manager.engine, HuggingFaceEngine)
-
-        # check everything is successfully sent through the embedding engine
-        assert embedding_manager.engine.model_name == mock_settings.EMBEDDING_MODEL_NAME
-        assert embedding_manager.engine.engine_name == mock_settings.EMBEDDING_ENGINE
-        # check we have access to HuggingFaceEmbeddings
-        assert isinstance(embedding_manager.engine.embedding, HuggingFaceEmbeddings)
 
 
-def test_embedding_manager_raises_value_error_for_unknown_provider(mock_settings: Settings):
-    """Check manager raises exception if the provider isn't supported"""
-    invalid_provider = "invalid-provider-name"
+def test_init_raises_not_implemented_error_when_provider_unregistered(mocker) -> None:
+    """Error: valid enum member missing from _ENGINE_REGISTRY raises NotImplementedError."""
+    mocker.patch.dict(EmbeddingManager._ENGINE_REGISTRY, {}, clear=True)
 
-    with pytest.raises(ValueError) as exc_info:
-        EmbeddingManager(provider=invalid_provider, model_name=mock_settings.EMBEDDING_MODEL_NAME)
-
-    assert f"Engine '{invalid_provider}' not supported" in str(exc_info.value)
-
-
-def test_embedding_manager_raises_not_implemented_error_for_unhandled_enum_value(mock_settings: Settings):
-    """Check a valid Enum but not yet implemented engine will raise an exception
-    into the "_" case of _check_embedding_provider_availability function."""
-    provider = "openai"
-
-    # Patch EmbeddingProvider inside the manager module to simulate 'openai' as a valid entry
-    with patch("src.embedding.embedding_manager.EmbeddingProvider") as mock_enum:
-        # Trick the try/except block to accept 'openai' and return it for the match-case statement
-        mock_enum.return_value = "openai"
-        with pytest.raises(NotImplementedError) as exc_info:
-            EmbeddingManager(provider=provider, model_name=mock_settings.EMBEDDING_MODEL_NAME)
-
-        assert f"Engine 'openai' is listed but not yet implemented" in str(exc_info.value)
+    with pytest.raises(
+        NotImplementedError,
+        match="is listed but not yet implemented",
+    ):
+        EmbeddingManager(
+            provider=EmbeddingProvider.HUGGINGFACE.value,
+            model_name="BAAI/bge-small-en-v1.5",
+        )

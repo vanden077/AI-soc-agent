@@ -154,9 +154,9 @@ def test_stix_pipeline_obeys_delta_cache_eviction_and_increments_counters(
         mock_extractor_cls, mock_filter_cls, mock_file_context, mock_infra, stix_mock_stream
 ):
     """
-    GIVEN a STIX stream of objects where the delta-cache dictates NO update is needed (_need_upsert returns False)
+    GIVEN a STIX stream of objects where the delta-persistence dictates NO update is needed (_need_upsert returns False)
     WHEN running the StixPipeline
-    THEN verify the orchestrator properly interprets the negative cache decision,
+    THEN verify the orchestrator properly interprets the negative persistence decision,
          skips processing loops via the continue directive, and invokes no database writes or embeddings.
     """
     # Arrange
@@ -301,7 +301,7 @@ def test_need_upsert_delta_cache_decision_matrix(
         mock_file_context, mock_infra, remote_hashes, extracted_data, expected_result
 ):
     """
-    GIVEN various remote cache state mappings and an extracted STIX payload signature
+    GIVEN various remote persistence state mappings and an extracted STIX payload signature
     WHEN evaluating structural update requirements via the private _need_upsert helper
     THEN verify it correctly resolves whether an integration database upsert is needed.
     """
@@ -312,7 +312,7 @@ def test_need_upsert_delta_cache_decision_matrix(
         file_path=mock_file_context
     )
 
-    # Pre-populate the orchestrator delta state cache registry
+    # Pre-populate the orchestrator delta state persistence registry
     pipeline._remote_hashes = remote_hashes
     # Act
     result = pipeline._need_upsert(extracted_data=extracted_data)

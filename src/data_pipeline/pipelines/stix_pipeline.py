@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Generator, Any
 import ijson
 
+from src.embedding.interfaces import IEmbeddingEngine
+from src.persistence.interfaces import IVectorIngestionEngine
 from src.data_pipeline.compilers.stix_compiler import StixCompiler
-from src.common.cache import IngestionCacheClient
-from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 from src.data_pipeline.extractors.stix_extractor import StixExtractor
 from src.data_pipeline.filters.stix_filter import StixFilter
 
@@ -35,7 +35,7 @@ class StixPipeline:
     """
     def __init__(
             self,
-            cache_client: IngestionCacheClient,
+            cache_client: IVectorIngestionEngine,
             embedding_engine: IEmbeddingEngine,
             file_path: Path,
             batch_size: int = 50

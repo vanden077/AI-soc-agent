@@ -4,7 +4,7 @@ import pytest
 from langchain_huggingface import HuggingFaceEmbeddings
 
 from src.embedding.engine import HuggingFaceEngine
-from src.common.constants import Settings
+from src.constants import Settings
 
 
 
