@@ -1,6 +1,6 @@
 import pytest
-
 from src.data_pipeline.filters.stix_filter import StixFilter
+
 from tests.dataset_test import STIX_MOCK
 
 
@@ -13,6 +13,7 @@ def test_stix_filter_accepts_active_root_technique():
     stix_obj = STIX_MOCK["objects"][0]
     stix_filter = StixFilter(stix_object=stix_obj)
     assert stix_filter.is_valid_technique() is True
+
 
 def test_stix_filter_accepts_active_sub_technique():
     """
@@ -57,16 +58,14 @@ def test_stix_filter_rejects_non_attack_pattern_types():
     stix_filter = StixFilter(stix_object=stix_obj)
     assert stix_filter.is_valid_technique() is False
 
+
 @pytest.mark.parametrize(
     "corrupted_payload",
-    [
-        "corrupted_string_instead_of_dict",
-        ["list", "of", "elements"],
-        None,
-        12345
-    ]
+    ["corrupted_string_instead_of_dict", ["list", "of", "elements"], None, 12345],
 )
-def test_stix_filter_defensive_guardrail_against_invalid_payload_types(corrupted_payload, caplog):
+def test_stix_filter_defensive_guardrail_against_invalid_payload_types(
+    corrupted_payload, caplog
+):
     """
     Edge Case: The stream injector passes a corrupted or malformed non-dictionary payload.
     The filter must gracefully capture it, log a warning diagnostic, and safely return False.

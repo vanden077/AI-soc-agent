@@ -1,4 +1,5 @@
 from langchain_huggingface import HuggingFaceEmbeddings
+
 from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 
 
@@ -15,7 +16,7 @@ class HuggingFaceEngine(IEmbeddingEngine[HuggingFaceEmbeddings]):
         return HuggingFaceEmbeddings(model_name=self._model_name)
 
     def embed_query(self, text: str) -> list[float]:
-        """ Return text vectorized by HuggingFace Embeddings
+        """Return text vectorized by HuggingFace Embeddings
         :param text: str to vectorize
         :return: vectorized text
         """

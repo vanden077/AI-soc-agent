@@ -1,6 +1,7 @@
 import importlib
-from typing import Any, ClassVar
 from collections.abc import Callable
+from typing import Any, ClassVar
+
 from src.persistence.interfaces.i_json_storage_engine import IJsonStorageEngine
 from src.persistence.interfaces.i_persistence_factory import IPersistenceFactory
 from src.persistence.interfaces.i_vector_ingestion_engine import IVectorIngestionEngine
@@ -51,10 +52,7 @@ class PersistenceManager:
         module = importlib.import_module(module_path)
         return getattr(module, class_name)
 
-    def create_json_engine(
-            self,
-            **connection_kwargs: Any
-    ) -> IJsonStorageEngine:
+    def create_json_engine(self, **connection_kwargs: Any) -> IJsonStorageEngine:
         """Instantiate and initialize an isolated JSON document storage engine.
 
         Args:
@@ -75,9 +73,7 @@ class PersistenceManager:
         return self._factory.create_json_engine(**connection_kwargs)
 
     def create_vector_search_engine(
-            self,
-            index_path: str,
-            **connection_kwargs: Any
+        self, index_path: str, **connection_kwargs: Any
     ) -> IVectorSearchEngine:
         """Instantiate and initialize a read-only semantic vector search engine.
 
@@ -99,16 +95,15 @@ class PersistenceManager:
             IVectorSearchEngine: Ready-to-use semantic search client with synchronized index metadata and isolated pool.
         """
         return self._factory.create_vector_search_engine(
-            index_path=index_path,
-            **connection_kwargs
+            index_path=index_path, **connection_kwargs
         )
 
     def create_vector_ingestion_engine(
-            self,
-            index_path: str,
-            target_vector_field: str,
-            semantic_hashes_key: str,
-            **connection_kwargs: Any
+        self,
+        index_path: str,
+        target_vector_field: str,
+        semantic_hashes_key: str,
+        **connection_kwargs: Any,
     ) -> IVectorIngestionEngine:
         """Instantiate and initialize an ephemeral batch vector ingestion engine.
 
@@ -136,5 +131,5 @@ class PersistenceManager:
             index_path=index_path,
             target_vector_field=target_vector_field,
             semantic_hashes_key=semantic_hashes_key,
-            **connection_kwargs
+            **connection_kwargs,
         )

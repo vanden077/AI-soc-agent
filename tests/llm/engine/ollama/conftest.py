@@ -1,8 +1,8 @@
-from typing import Callable, Any
+from collections.abc import Callable
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from src.constants import Settings
 from src.llm.engine import OllamaEngine
 
@@ -19,13 +19,11 @@ def mock_llm_client() -> MagicMock:
 def llm_engine(mock_llm_client: MagicMock, mock_settings: Settings) -> OllamaEngine:
     """Initialize OllamaEngine by mocking its internal structured model initialization."""
     # Patch the private method to return our mock runner directly, bypassing HTTPX calls entirely
-    with patch.object(
-        OllamaEngine, "_init_llm", return_value=mock_llm_client
-    ):
+    with patch.object(OllamaEngine, "_init_llm", return_value=mock_llm_client):
         return OllamaEngine(
             base_url=mock_settings.LLM_URL,
             model_name=mock_settings.LLM_MODEL,
-            temperature=mock_settings.LLM_TEMPERATURE
+            temperature=mock_settings.LLM_TEMPERATURE,
         )
 
 
@@ -37,6 +35,7 @@ def configure_llm_mock(mock_llm_client: MagicMock) -> Callable[..., MagicMock]:
 
     Allows setting either a fixed 'return_value' or a dynamic 'side_effect'.
     """
+
     def _configure(return_value: Any = None, side_effect: Any = None) -> MagicMock:
         # create mock of LangChain RunnableSequence
         mock_structured_pipeline = MagicMock()
@@ -49,4 +48,5 @@ def configure_llm_mock(mock_llm_client: MagicMock) -> Callable[..., MagicMock]:
         # Link LangChain mock with the call to structured_output to return the sequence
         mock_llm_client.with_structured_output.return_value = mock_structured_pipeline
         return mock_structured_pipeline
+
     return _configure

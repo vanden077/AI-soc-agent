@@ -1,3 +1,3 @@
 from .pipelines.stix_pipeline import StixPipeline
 
-__all__ = ['StixPipeline']
+__all__ = ["StixPipeline"]

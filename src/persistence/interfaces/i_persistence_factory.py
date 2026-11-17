@@ -13,10 +13,7 @@ class IPersistenceFactory(ABC):
     """
 
     @abstractmethod
-    def create_json_engine(
-            self,
-            **connection_kwargs: Any
-    ) -> IJsonStorageEngine:
+    def create_json_engine(self, **connection_kwargs: Any) -> IJsonStorageEngine:
         """Instantiate and initialize an isolated JSON document storage engine.
 
         Args:
@@ -37,9 +34,7 @@ class IPersistenceFactory(ABC):
 
     @abstractmethod
     def create_vector_search_engine(
-            self,
-            index_path: str,
-            **connection_kwargs: Any
+        self, index_path: str, **connection_kwargs: Any
     ) -> IVectorSearchEngine:
         """Instantiate and initialize a read-only semantic vector search engine.
 
@@ -63,11 +58,11 @@ class IPersistenceFactory(ABC):
 
     @abstractmethod
     def create_vector_ingestion_engine(
-            self,
-            index_path: str,
-            target_vector_field: str,
-            semantic_hashes_key: str,
-            **connection_kwargs: Any
+        self,
+        index_path: str,
+        target_vector_field: str,
+        semantic_hashes_key: str,
+        **connection_kwargs: Any,
     ) -> IVectorIngestionEngine:
         """Instantiate and initialize an ephemeral batch vector ingestion engine.
 

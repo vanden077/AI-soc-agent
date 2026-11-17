@@ -1,29 +1,33 @@
 import logging
 from typing import Any
+
 from redis import Redis
 from redis.backoff import ExponentialBackoff
 from redis.retry import Retry
 from redisvl.index import SearchIndex
+
 from src.persistence.engine.redis.driver.vector_fields_specs import VectorFieldSpecs
 
 logger = logging.getLogger()
+
 
 class RedisDriver:
     """
     Redis driver handling a connection pool and retry mechanism
     """
+
     def __init__(
-        self,
-        host: str | None = None,
-        port: int | None = None,
-        ssl: bool = True,
-        username: str | None = None,
-        password: str | None = None,
-        max_size_pool: int = 50,
-        retry_strategy: int = 3,
-        decode_responses: bool = True,
-        db: int = 0,
-        vector_capability: bool = False,
+            self,
+            host: str | None = None,
+            port: int | None = None,
+            ssl: bool = True,
+            username: str | None = None,
+            password: str | None = None,
+            max_size_pool: int = 50,
+            retry_strategy: int = 3,
+            decode_responses: bool = True,
+            db: int = 0,
+            vector_capability: bool = False,
     ):
         self._host = "localhost" if host is None else host
         self._port = 6379 if port is None else port
@@ -79,9 +83,9 @@ class RedisDriver:
                 f"Max connections: {self.pool_size}, "
                 f"Retry strategy: {self._retry_strategy}"
             )
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             logger.error(f"Cache pool is KO because: {err}")
-            raise err
+            raise
 
     def health(self) -> bool:
         """
@@ -90,7 +94,7 @@ class RedisDriver:
         """
         try:
             return bool(self.redis_client.ping())
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             logger.error(f"Error something went wrong, cant ping Cache server: {err}")
             return False
 
@@ -174,7 +178,7 @@ class RedisDriver:
     # KEY LISTING
     # ============================================================================
     def list_keys(
-        self, match: str | None = None, batch_size: int = 500
+            self, match: str | None = None, batch_size: int = 500
     ) -> tuple[int, list[str]]:
         """
         https://redis.io/docs/latest/commands/scan/
@@ -197,7 +201,7 @@ class RedisDriver:
                 result.extend(batch_keys)
                 if cursor == 0:
                     break
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             logger.error(f"Cache client error while listing keys: {err}")
 
         # cast key type to str if needed
@@ -241,7 +245,7 @@ class RedisDriver:
                 schema_path=schema_path,
                 redis_client=self.redis_client,
                 validate_on_load=True,
-                owns_client=False
+                owns_client=False,
                 # critical, if set to True, we delegate client lifecycle (so connection pool lifecycle)
                 # to this object, here we want to keep full control on it.
             )
@@ -250,7 +254,7 @@ class RedisDriver:
                 index_builder.create(overwrite=False)
         except (ValueError, TypeError, RuntimeError) as err:
             logger.error(f"Error while creating search index from {schema_path}: {err}")
-            raise err
+            raise
 
         self._search_index = index_builder
 
@@ -298,7 +302,6 @@ class RedisDriver:
 
         return vector_catalog
 
-
     def get_index_prefix(self) -> str:
         """
         Return the index prefix defined in the Redis VL schema (YAML file).
@@ -313,7 +316,9 @@ class RedisDriver:
         Transparently exposes the active Redis VL SearchIndex instance.
         """
         if not self._vector_capability:
-            raise RuntimeError("This persistence client instance was initialized without vector capabilities.")
+            raise RuntimeError(
+                "This persistence client instance was initialized without vector capabilities."
+            )
 
         if self._search_index is None:
             raise RuntimeError("Search index has not been loaded into the driver yet.")

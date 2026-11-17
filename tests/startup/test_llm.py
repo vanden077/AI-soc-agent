@@ -2,7 +2,6 @@ import logging
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.constants import Settings
 from src.llm.interfaces import ILlmEngine
 from src.startup.llm import init_llm
@@ -28,7 +27,10 @@ def test_init_llm_nominal_instantiates_manager_and_returns_engine(
             temperature=mock_settings.LLM_TEMPERATURE,
         )
         assert result is mock_engine
-        assert f"[LLM STARTUP] Load LLM {mock_settings.LLM_ENGINE}, model {mock_settings.LLM_MODEL}..." in caplog.text
+        assert (
+            f"[LLM STARTUP] Load LLM {mock_settings.LLM_ENGINE}, model {mock_settings.LLM_MODEL}..."
+            in caplog.text
+        )
 
 
 def test_init_llm_logs_and_reraises_on_exception(
@@ -44,7 +46,9 @@ def test_init_llm_logs_and_reraises_on_exception(
         mock_settings.LLM_TEMPERATURE = 0.0
 
         mock_manager_cls = mocker.patch("src.startup.llm.LlmManager")
-        mock_manager_cls.side_effect = ValueError("Engine 'invalid_engine' not supported")
+        mock_manager_cls.side_effect = ValueError(
+            "Engine 'invalid_engine' not supported"
+        )
 
         with pytest.raises(ValueError, match="Engine 'invalid_engine' not supported"):
             init_llm(settings=mock_settings)

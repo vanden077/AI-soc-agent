@@ -2,9 +2,9 @@ from unittest.mock import patch
 
 import pytest
 from langchain_huggingface import HuggingFaceEmbeddings
-
-from src.embedding.engine import HuggingFaceEngine
 from src.constants import Settings
+from src.embedding.engine import HuggingFaceEngine
+
 
 @pytest.fixture
 def embedding_engine(mock_settings: Settings) -> HuggingFaceEngine:

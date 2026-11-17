@@ -1,3 +1,3 @@
-from .geometry import is_distance_valid, clamp_distance_result
+from .geometry import clamp_distance_result, is_distance_valid
 
-__all__ = ["is_distance_valid", "clamp_distance_result"]
+__all__ = ["clamp_distance_result", "is_distance_valid"]

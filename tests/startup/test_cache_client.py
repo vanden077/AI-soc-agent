@@ -2,7 +2,6 @@ import logging
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.constants import Settings
 from src.persistence.interfaces import IJsonStorageEngine, IVectorSearchEngine
 from src.startup.cache_client import init_json_pool, init_vector_pool
@@ -21,7 +20,9 @@ def test_init_json_pool_nominal_creates_isolated_json_engine(
 
         result = init_json_pool(settings=mock_settings)
 
-        mock_manager_cls.assert_called_once_with(provider=mock_settings.PERSISTENCE_ENGINE)
+        mock_manager_cls.assert_called_once_with(
+            provider=mock_settings.PERSISTENCE_ENGINE
+        )
         mock_manager_cls.return_value.create_json_engine.assert_called_once_with(
             host=mock_settings.REDIS_HOST,
             port=mock_settings.REDIS_PORT,
@@ -45,7 +46,9 @@ def test_init_json_pool_logs_and_reraises_on_exception(
     """Error: logs host, port, db, and root cause before re-raising exception."""
     with caplog.at_level(logging.ERROR):
         mock_manager_cls = mocker.patch("src.startup.cache_client.PersistenceManager")
-        mock_manager_cls.return_value.create_json_engine.side_effect = ConnectionError("Connection refused")
+        mock_manager_cls.return_value.create_json_engine.side_effect = ConnectionError(
+            "Connection refused"
+        )
 
         with pytest.raises(ConnectionError, match="Connection refused"):
             init_json_pool(settings=mock_settings)
@@ -54,8 +57,7 @@ def test_init_json_pool_logs_and_reraises_on_exception(
             "[JSON POOL STARTUP] Creating persistence client specialized in JSON documents, "
             f"on {mock_settings.REDIS_HOST}:{mock_settings.REDIS_PORT}, "
             f"db: {mock_settings.REDIS_JSON_POOL_DB_ID}, "
-            "failed because: Connection refused"
-            in caplog.text
+            "failed because: Connection refused" in caplog.text
         )
 
 
@@ -68,11 +70,15 @@ def test_init_vector_pool_nominal_creates_isolated_vector_search_engine(
     with caplog.at_level(logging.INFO):
         mock_vector_engine: MagicMock = mocker.MagicMock(spec=IVectorSearchEngine)
         mock_manager_cls = mocker.patch("src.startup.cache_client.PersistenceManager")
-        mock_manager_cls.return_value.create_vector_search_engine.return_value = mock_vector_engine
+        mock_manager_cls.return_value.create_vector_search_engine.return_value = (
+            mock_vector_engine
+        )
 
         result = init_vector_pool(settings=mock_settings)
 
-        mock_manager_cls.assert_called_once_with(provider=mock_settings.PERSISTENCE_ENGINE)
+        mock_manager_cls.assert_called_once_with(
+            provider=mock_settings.PERSISTENCE_ENGINE
+        )
         mock_manager_cls.return_value.create_vector_search_engine.assert_called_once_with(
             index_path=mock_settings.MITRE_INDEX_SCHEMA_PATH,
             host=mock_settings.REDIS_HOST,
@@ -97,7 +103,9 @@ def test_init_vector_pool_logs_and_reraises_on_exception(
     """Error: logs host, port, db, and root cause before re-raising exception."""
     with caplog.at_level(logging.ERROR):
         mock_manager_cls = mocker.patch("src.startup.cache_client.PersistenceManager")
-        mock_manager_cls.return_value.create_vector_search_engine.side_effect = RuntimeError("Missing index")
+        mock_manager_cls.return_value.create_vector_search_engine.side_effect = (
+            RuntimeError("Missing index")
+        )
 
         with pytest.raises(RuntimeError, match="Missing index"):
             init_vector_pool(settings=mock_settings)
@@ -106,6 +114,5 @@ def test_init_vector_pool_logs_and_reraises_on_exception(
             "[VECTOR POOL STARTUP] Creating persistence client specialized in VECTOR documents, "
             f"on {mock_settings.REDIS_HOST}:{mock_settings.REDIS_PORT}, "
             f"db: {mock_settings.REDIS_VECTOR_POOL_DB_ID} "
-            "failed because: Missing index"
-            in caplog.text
+            "failed because: Missing index" in caplog.text
         )

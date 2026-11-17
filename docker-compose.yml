@@ -39,7 +39,7 @@ services:
       LLM_MODEL: "phi4-mini:3.8b" # because of my laptop without GPU :(
       LLM_URL: "http://cyber-agent-ollama:11434"
       LLM_TEMPERATURE: 0.0
-    command: uv run fastapi dev src/main.py --host 0.0.0.0 --port 8080
+    command: uv run --no-sync fastapi dev src/main.py --host 0.0.0.0 --port 8080
     depends_on:
       redis:
         condition: service_started
@@ -61,7 +61,7 @@ services:
       - ollama-data:/root/.ollama
     ports:
       - "11434:11434"
-    entrypoint: ["sh", "-c", "ollama serve >/dev/null 2>&1"]
+    entrypoint: [ "sh", "-c", "ollama serve >/dev/null 2>&1" ]
     restart: unless-stopped
     networks:
       - cyber-agent-network

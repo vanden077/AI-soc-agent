@@ -1,15 +1,17 @@
-from typing import Type
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import BaseModel
 
-from src.llm.interfaces.i_llm_engine import ILlmEngine, T
+from src.llm.interfaces.i_llm_engine import ILlmEngine
 
 
 class DummyLlmEngine(ILlmEngine[MagicMock]):
     """Backend-agnostic stub implementing ILlmEngine for manager contract testing."""
 
-    def __init__(self, base_url: str, model_name: str, temperature: float = 0.0) -> None:
+    def __init__(
+            self, base_url: str, model_name: str, temperature: float = 0.0
+    ) -> None:
         self._base_url = base_url
         self._model_name = model_name
         self._temperature = temperature
@@ -18,7 +20,9 @@ class DummyLlmEngine(ILlmEngine[MagicMock]):
     def _init_llm(self) -> MagicMock:
         return MagicMock()
 
-    def analyze_event(self, prompt: list[tuple[str, str]], response_schema: Type[T]) -> T:
+    def analyze_event[T: BaseModel](
+            self, prompt: list[tuple[str, str]], response_schema: type[T]
+    ) -> T:
         raise NotImplementedError
 
     @property
@@ -39,6 +43,6 @@ class DummyLlmEngine(ILlmEngine[MagicMock]):
 
 
 @pytest.fixture
-def dummy_llm_engine_cls() -> Type[DummyLlmEngine]:
+def dummy_llm_engine_cls() -> type[DummyLlmEngine]:
     """Expose the backend-agnostic ILlmEngine implementation class."""
     return DummyLlmEngine

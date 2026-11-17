@@ -1,21 +1,19 @@
 import json
 import logging
-from typing import Any, cast, Mapping
+from collections.abc import Mapping
+from typing import Any, cast
+
 import numpy as np
 
 from src.persistence.engine.redis.driver.redis_driver import RedisDriver
 from src.persistence.interfaces.i_vector_ingestion_engine import IVectorIngestionEngine
 
-
 logger = logging.getLogger(__name__)
 
 
 class IngestionCacheClient(IVectorIngestionEngine):
-
-    def __init__(self,
-        driver: RedisDriver,
-        target_vector_field: str,
-        semantic_hashes_key: str
+    def __init__(
+        self, driver: RedisDriver, target_vector_field: str, semantic_hashes_key: str
     ) -> None:
         """
         Initializes the agnostic ingestion client layer.
@@ -45,7 +43,9 @@ class IngestionCacheClient(IVectorIngestionEngine):
             )
 
         self._vector_field_name = self._target_vector_field
-        logger.info(f"VSS Ingestion Ready: Prefix={self._key_prefix} | VectorField={self._vector_field_name}")
+        logger.info(
+            f"VSS Ingestion Ready: Prefix={self._key_prefix} | VectorField={self._vector_field_name}"
+        )
 
     def fetch_remote_hashes(self) -> dict[str, str]:
         """
@@ -63,17 +63,22 @@ class IngestionCacheClient(IVectorIngestionEngine):
     def set_remote_hashes(self, hash_map: dict[str, str]) -> None:
         """Persists a map of generic identifiers and fingerprints into the semantic hashes registry."""
         try:
-            self._driver.redis_client.hset(self._semantic_hashes_key, mapping=cast(Mapping[Any, Any], hash_map))
+            self._driver.redis_client.hset(
+                self._semantic_hashes_key, mapping=cast(Mapping[Any, Any], hash_map)
+            )
         except Exception as err:
-            logger.error(f"Failed to insert documents fingerprints into '{self._semantic_hashes_key}': {err}")
-            raise RuntimeError(f"Infrastructure delta-cache persistence failure: {err}") from err
-
+            logger.error(
+                f"Failed to insert documents fingerprints into '{self._semantic_hashes_key}': {err}"
+            )
+            raise RuntimeError(
+                f"Infrastructure delta-cache persistence failure: {err}"
+            ) from err
 
     def execute_bulk_upsert(
-            self,
-            payload: list[dict[str, Any]],
-            embeddings: list[list[float]],
-            id_field: str = "id"
+        self,
+        payload: list[dict[str, Any]],
+        embeddings: list[list[float]],
+        id_field: str = "id",
     ) -> None:
         """
         Coordinates the structural formatting layer and flushes objects
@@ -86,8 +91,12 @@ class IngestionCacheClient(IVectorIngestionEngine):
             bulk_documents.append(self._normalize_document_types(doc, vector))
 
         # Bulk load the complex VSS records using the high-performance RedisVL native pipeline
-        self._driver.search_index.load(data=bulk_documents, id_field=id_field, preprocess=None)
-        logger.info(f"Batch ({len(payload)} documents) committed to VSS index successfully.")
+        self._driver.search_index.load(
+            data=bulk_documents, id_field=id_field, preprocess=None
+        )
+        logger.info(
+            f"Batch ({len(payload)} documents) committed to VSS index successfully."
+        )
 
     def health(self) -> bool:
         """
@@ -103,7 +112,9 @@ class IngestionCacheClient(IVectorIngestionEngine):
         """
         self._driver.close()
 
-    def _normalize_document_types(self, doc: dict[str, Any], vector: list[float]) -> dict[str, Any]:
+    def _normalize_document_types(
+        self, doc: dict[str, Any], vector: list[float]
+    ) -> dict[str, Any]:
         """
         Coordinates the structural conversion of a STIX document
         to satisfy strict Redis Hash type constraints.
@@ -149,4 +160,3 @@ class IngestionCacheClient(IVectorIngestionEngine):
         Provides the immutable identifier key required by downstream processing layers.
         """
         return self._vector_field_name
-

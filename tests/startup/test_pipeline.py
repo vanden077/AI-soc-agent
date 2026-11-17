@@ -2,7 +2,6 @@ import logging
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine
 from src.persistence.interfaces import IVectorIngestionEngine
@@ -20,12 +19,16 @@ def test_run_pipeline_nominal_executes_stix_pipeline_and_closes_engine(
         mock_ingestion_engine: MagicMock = mocker.MagicMock(spec=IVectorIngestionEngine)
 
         mock_manager_cls = mocker.patch("src.startup.pipeline.PersistenceManager")
-        mock_manager_cls.return_value.create_vector_ingestion_engine.return_value = mock_ingestion_engine
+        mock_manager_cls.return_value.create_vector_ingestion_engine.return_value = (
+            mock_ingestion_engine
+        )
         mock_pipeline_cls = mocker.patch("src.startup.pipeline.StixPipeline")
 
         run_pipeline(settings=mock_settings, embedding_engine=mock_embedding_engine)
 
-        mock_manager_cls.assert_called_once_with(provider=mock_settings.PERSISTENCE_ENGINE)
+        mock_manager_cls.assert_called_once_with(
+            provider=mock_settings.PERSISTENCE_ENGINE
+        )
         mock_manager_cls.return_value.create_vector_ingestion_engine.assert_called_once_with(
             index_path=mock_settings.MITRE_INDEX_SCHEMA_PATH,
             target_vector_field=mock_settings.REDIS_VL_VECTOR_FIELD,
@@ -48,7 +51,10 @@ def test_run_pipeline_nominal_executes_stix_pipeline_and_closes_engine(
         )
         mock_pipeline_cls.return_value.run.assert_called_once()
         mock_ingestion_engine.close.assert_called_once()
-        assert "[PIPELINE STARTUP] Terminated, data are vectorized and ready." in caplog.text
+        assert (
+            "[PIPELINE STARTUP] Terminated, data are vectorized and ready."
+            in caplog.text
+        )
 
 
 def test_run_pipeline_skips_close_when_engine_creation_fails(
@@ -60,14 +66,17 @@ def test_run_pipeline_skips_close_when_engine_creation_fails(
     with caplog.at_level(logging.ERROR):
         mock_embedding_engine: MagicMock = mocker.MagicMock(spec=IEmbeddingEngine)
         mock_manager_cls = mocker.patch("src.startup.pipeline.PersistenceManager")
-        mock_manager_cls.return_value.create_vector_ingestion_engine.side_effect = RuntimeError(
-            "Index schema invalid"
+        mock_manager_cls.return_value.create_vector_ingestion_engine.side_effect = (
+            RuntimeError("Index schema invalid")
         )
 
         with pytest.raises(RuntimeError, match="Index schema invalid"):
             run_pipeline(settings=mock_settings, embedding_engine=mock_embedding_engine)
 
-        assert "[PIPELINE STARTUP] Pipeline failed because: Index schema invalid" in caplog.text
+        assert (
+            "[PIPELINE STARTUP] Pipeline failed because: Index schema invalid"
+            in caplog.text
+        )
 
 
 def test_run_pipeline_closes_engine_even_when_pipeline_execution_fails(
@@ -81,12 +90,19 @@ def test_run_pipeline_closes_engine_even_when_pipeline_execution_fails(
         mock_ingestion_engine: MagicMock = mocker.MagicMock(spec=IVectorIngestionEngine)
 
         mock_manager_cls = mocker.patch("src.startup.pipeline.PersistenceManager")
-        mock_manager_cls.return_value.create_vector_ingestion_engine.return_value = mock_ingestion_engine
+        mock_manager_cls.return_value.create_vector_ingestion_engine.return_value = (
+            mock_ingestion_engine
+        )
         mock_pipeline_cls = mocker.patch("src.startup.pipeline.StixPipeline")
-        mock_pipeline_cls.return_value.run.side_effect = OSError("STIX JSON file not found")
+        mock_pipeline_cls.return_value.run.side_effect = OSError(
+            "STIX JSON file not found"
+        )
 
         with pytest.raises(OSError, match="STIX JSON file not found"):
             run_pipeline(settings=mock_settings, embedding_engine=mock_embedding_engine)
 
         mock_ingestion_engine.close.assert_called_once()
-        assert "[PIPELINE STARTUP] Pipeline failed because: STIX JSON file not found" in caplog.text
+        assert (
+            "[PIPELINE STARTUP] Pipeline failed because: STIX JSON file not found"
+            in caplog.text
+        )

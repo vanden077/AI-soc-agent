@@ -1,9 +1,8 @@
 import logging
 from unittest.mock import AsyncMock, MagicMock
 
-from fastapi import HTTPException, status
 import pytest
-
+from fastapi import HTTPException, status
 from src.api.schemas import AvailablePlatforms
 from src.api.services.forensic_service import ForensicService
 from src.soc_agent.schemas import ThreatAnalysis
@@ -26,7 +25,9 @@ async def test_analyze_and_report_nominal_delegates_to_workflow(
             matched_techniques=[],
         )
 
-        mock_workflow_cls = mocker.patch("src.api.services.forensic_service.SocAgentWorkflow")
+        mock_workflow_cls = mocker.patch(
+            "src.api.services.forensic_service.SocAgentWorkflow"
+        )
         mock_workflow_cls.return_value.execute = AsyncMock(return_value=expected_report)
 
         service = ForensicService(
@@ -49,7 +50,10 @@ async def test_analyze_and_report_nominal_delegates_to_workflow(
             raw_log="EventID=4688 powershell.exe -enc ...",
         )
         assert result == expected_report
-        assert "[FORENSIC SERVICE] Initiating forensic analysis pipeline for 'windows'" in caplog.text
+        assert (
+            "[FORENSIC SERVICE] Initiating forensic analysis pipeline for 'windows'"
+            in caplog.text
+        )
 
 
 async def test_analyze_and_report_translates_workflow_crash_into_http_500(
@@ -61,7 +65,9 @@ async def test_analyze_and_report_translates_workflow_crash_into_http_500(
 ) -> None:
     """Error: logs diagnostic message and raises HTTP 500 when SocAgentWorkflow fails."""
     with caplog.at_level(logging.ERROR):
-        mock_workflow_cls = mocker.patch("src.api.services.forensic_service.SocAgentWorkflow")
+        mock_workflow_cls = mocker.patch(
+            "src.api.services.forensic_service.SocAgentWorkflow"
+        )
         mock_workflow_cls.return_value.execute = AsyncMock(
             side_effect=RuntimeError("Ollama inference timeout")
         )
@@ -79,4 +85,7 @@ async def test_analyze_and_report_translates_workflow_crash_into_http_500(
             )
 
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "[FORENSIC SERVICE] AI Workflow collapsed: Ollama inference timeout" in caplog.text
+        assert (
+            "[FORENSIC SERVICE] AI Workflow collapsed: Ollama inference timeout"
+            in caplog.text
+        )

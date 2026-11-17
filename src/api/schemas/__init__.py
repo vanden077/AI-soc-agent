@@ -1,4 +1,3 @@
-from .log_ingress_payload import LogIngressPayload
-from .log_ingress_payload import AvailablePlatforms
+from .log_ingress_payload import AvailablePlatforms, LogIngressPayload
 
-__all__ = ["LogIngressPayload", "AvailablePlatforms"]
+__all__ = ["AvailablePlatforms", "LogIngressPayload"]

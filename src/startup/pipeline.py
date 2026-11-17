@@ -1,18 +1,21 @@
 import logging
 
+from src.constants import Settings
+from src.data_pipeline import StixPipeline
+from src.embedding.interfaces import IEmbeddingEngine
 from src.persistence import PersistenceManager
 from src.persistence.interfaces import IVectorIngestionEngine
-from src.embedding.interfaces import IEmbeddingEngine
-from src.data_pipeline import StixPipeline
-from src.constants import Settings
 
 logger = logging.getLogger(__name__)
+
 
 def run_pipeline(settings: Settings, embedding_engine: IEmbeddingEngine) -> None:
     """Upsert data to RedisVL."""
     ingestion_engine: IVectorIngestionEngine | None = None
     try:
-        logger.info("[PIPELINE STARTUP] Create rw Vector connexion pool to Redis for pipeline ingestion...")
+        logger.info(
+            "[PIPELINE STARTUP] Create rw Vector connexion pool to Redis for pipeline ingestion..."
+        )
         manager = PersistenceManager(provider=settings.PERSISTENCE_ENGINE)
         ingestion_engine = manager.create_vector_ingestion_engine(
             index_path=settings.MITRE_INDEX_SCHEMA_PATH,
@@ -36,12 +39,14 @@ def run_pipeline(settings: Settings, embedding_engine: IEmbeddingEngine) -> None
             batch_size=50,
         )
 
-        logger.info("[PIPELINE STARTUP] Running (read/parse/filter/extract/compile/vectorize)...")
+        logger.info(
+            "[PIPELINE STARTUP] Running (read/parse/filter/extract/compile/vectorize)..."
+        )
         pipeline.run()
         logger.info("[PIPELINE STARTUP] Terminated, data are vectorized and ready.")
     except Exception as e:
-        logger.error(f"[PIPELINE STARTUP] Pipeline failed because: {str(e)}")
-        raise e
+        logger.error(f"[PIPELINE STARTUP] Pipeline failed because: {e!s}")
+        raise
     finally:
         # Gracefully release connexions
         if ingestion_engine is not None:

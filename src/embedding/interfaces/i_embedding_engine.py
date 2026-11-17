@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Any
+from typing import Any
 
-_EmbEngine = TypeVar("_EmbEngine", covariant=True)
 
-class IEmbeddingEngine(ABC, Generic[_EmbEngine]):
+class IEmbeddingEngine[EmbEngine](ABC):
     """Common interface for all embedding engines."""
+
     @abstractmethod
     def __init__(self, model_name: str) -> None:
         """Initialize the embedding engine class."""
 
     @abstractmethod
-    def _init_embedding(self) -> _EmbEngine:
+    def _init_embedding(self) -> EmbEngine:
         """Function to initialize the embedding,
         it is easier for testing it if the instantiation is outside of the __init__ method."""
 
@@ -39,5 +39,5 @@ class IEmbeddingEngine(ABC, Generic[_EmbEngine]):
 
     @property
     @abstractmethod
-    def embedding(self) -> _EmbEngine:
+    def embedding(self) -> EmbEngine:
         """Get the engine instance"""

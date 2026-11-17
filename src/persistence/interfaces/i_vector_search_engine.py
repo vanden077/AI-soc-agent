@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Type, TypeVar
-from pydantic import BaseModel
 
-T = TypeVar("T", bound=BaseModel)
+from pydantic import BaseModel
 
 
 class IVectorSearchEngine(ABC):
@@ -13,13 +11,13 @@ class IVectorSearchEngine(ABC):
     """
 
     @abstractmethod
-    def similarity_search(
-        self,
-        query_vector: list[float],
-        response_model: Type[T],
-        vector_field: Optional[str] = None,
-        filter_expression: Optional[dict[str, str]] = None,
-        limit: int = 5,
+    def similarity_search[T: BaseModel](
+            self,
+            query_vector: list[float],
+            response_model: type[T],
+            vector_field: str | None = None,
+            filter_expression: dict[str, str] | None = None,
+            limit: int = 5,
     ) -> list[T]:
         """Executes a semantic nearest-neighbor search and hydrates results into `response_model`."""
 

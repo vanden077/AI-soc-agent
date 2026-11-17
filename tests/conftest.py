@@ -1,6 +1,6 @@
 from pathlib import Path
-import pytest
 
+import pytest
 from src.constants import Settings
 
 
@@ -34,8 +34,9 @@ def _session_settings() -> Settings:
         LLM_ENGINE="ollama",
         LLM_MODEL="llama3.1",
         LLM_URL="http://localhost:11434",
-        LLM_TEMPERATURE=0.0
+        LLM_TEMPERATURE=0.0,
     )
+
 
 @pytest.fixture(scope="function")
 def mock_settings(_session_settings: Settings) -> Settings:

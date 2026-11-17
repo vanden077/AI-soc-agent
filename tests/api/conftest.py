@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from unittest.mock import MagicMock
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine
@@ -37,18 +37,19 @@ def mock_vector_cache(mocker) -> MagicMock:
 
 @pytest.fixture(scope="function")
 def mock_client(
-    mocker,
-    mock_settings: Settings,
-    mock_json_cache: MagicMock,
-    mock_vector_cache: MagicMock,
-    mock_embedding_engine: MagicMock,
-    mock_llm_engine: MagicMock,
-) -> Generator[TestClient, None, None]:
+        mocker,
+        mock_settings: Settings,
+        mock_json_cache: MagicMock,
+        mock_vector_cache: MagicMock,
+        mock_embedding_engine: MagicMock,
+        mock_llm_engine: MagicMock,
+) -> Generator[TestClient]:
     """
     Isolated HTTP TestClient executing FastAPI lifespan with mocked startup boundaries.
     """
     mocker.patch("src.main.load_env_vars", return_value=mock_settings)
     mocker.patch("src.main.init_embedding_engine", return_value=mock_embedding_engine)
+    mocker.patch("src.main.download_stix_file")
     mocker.patch("src.main.run_pipeline")
     mocker.patch("src.main.init_json_pool", return_value=mock_json_cache)
     mocker.patch("src.main.init_vector_pool", return_value=mock_vector_cache)

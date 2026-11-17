@@ -1,11 +1,13 @@
 import json
-from typing import cast, Mapping, Any
+from collections.abc import Mapping
+from typing import Any, cast
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import numpy as np
 import pytest
-
-from src.persistence.engine.redis.client.vector.ingestion_cache_client import IngestionCacheClient
+from src.persistence.engine.redis.client.vector.ingestion_cache_client import (
+    IngestionCacheClient,
+)
 from src.persistence.engine.redis.driver.redis_driver import RedisDriver
 
 
@@ -36,10 +38,13 @@ def ingestion_cache(redis_driver_factory, mock_redis_vl_search_index: MagicMock)
     ):
         yield client
 
+
 # ============================================================================
 # TESTS
 # ============================================================================
-def test_init_search_index_nominal_hydration(ingestion_cache, mock_redis_vl_search_index):
+def test_init_search_index_nominal_hydration(
+    ingestion_cache, mock_redis_vl_search_index
+):
     """
     Nominal Case: The search index loads successfully.
     The index prefix and target vector field name must be correctly extracted,
@@ -52,7 +57,10 @@ def test_init_search_index_nominal_hydration(ingestion_cache, mock_redis_vl_sear
     assert ingestion_cache.key_prefix == "mitre:"
     assert ingestion_cache.vector_field_name == "text_embedding"
 
-def test_init_search_index_raises_value_error_on_mismatched_field(ingestion_cache, mock_redis_vl_search_index):
+
+def test_init_search_index_raises_value_error_on_mismatched_field(
+    ingestion_cache, mock_redis_vl_search_index
+):
     """
     Edge Case: The parsed YAML schema is valid and contains vectors, but the developer
     configured the client with a target_vector_field name that does not exist in the schema.
@@ -66,10 +74,13 @@ def test_init_search_index_raises_value_error_on_mismatched_field(ingestion_cach
     # The schema has 'text_embedding', but the client looks for 'invalid_typo_vector_name'
     with pytest.raises(ValueError) as err:
         ingestion_cache.init_search_index("mitre_attack_v1")
-    assert str(err.value) == ("Invalid index schema layout: "
-                              "The configured vector field 'invalid_typo_vector_name' "
-                              "was not detected inside the unified catalog extracted from 'mitre_attack_v1'."
-                              "Available vector fields defined in the schema are: ['text_embedding', 'image_embedding']")
+    assert str(err.value) == (
+        "Invalid index schema layout: "
+        "The configured vector field 'invalid_typo_vector_name' "
+        "was not detected inside the unified catalog extracted from 'mitre_attack_v1'."
+        "Available vector fields defined in the schema are: ['text_embedding', 'image_embedding']"
+    )
+
 
 def test_fetch_remote_hashes_success(ingestion_cache):
     """
@@ -80,12 +91,15 @@ def test_fetch_remote_hashes_success(ingestion_cache):
     # Given: Populate the fake in-memory Redis database directly
     target_key = "mitre:persistence:semantic_hashes"
     mock_fingerprints = {"T1055": "hash_v1", "T1055.001": "hash_sub_v1"}
-    ingestion_cache._driver.redis_client.hset(target_key, mapping=cast(Mapping[Any, Any], mock_fingerprints))
+    ingestion_cache._driver.redis_client.hset(
+        target_key, mapping=cast(Mapping[Any, Any], mock_fingerprints)
+    )
 
     # When: Invoke the production function
     registry = ingestion_cache.fetch_remote_hashes()
     # Then: Verify state consistency and clean string decoding
     assert registry == mock_fingerprints
+
 
 def test_fetch_remote_hashes_fail_safe_on_exception(mocker, caplog):
     """
@@ -146,8 +160,15 @@ def test_set_remote_hashes_escalates_runtime_error_on_exception(mocker, caplog):
     # When & Then: Enforce fast-failing error escalation contract
     with pytest.raises(RuntimeError) as err:
         client.set_remote_hashes(batch_signatures)
-    assert "Infrastructure delta-cache persistence failure: OOM Command not allowed" in str(err.value)
-    assert "Failed to insert documents fingerprints into 'mitre:persistence:semantic_hashes': OOM Command not allowed" in caplog.text
+    assert (
+        "Infrastructure delta-cache persistence failure: OOM Command not allowed"
+        in str(err.value)
+    )
+    assert (
+        "Failed to insert documents fingerprints into 'mitre:persistence:semantic_hashes': OOM Command not allowed"
+        in caplog.text
+    )
+
 
 def test_normalize_document_types_strict_flattening_constraints(ingestion_cache):
     """
@@ -163,13 +184,18 @@ def test_normalize_document_types_strict_flattening_constraints(ingestion_cache)
     raw_generic_doc = {
         "id": "unique_id_123",
         "custom_tags": ["tag_a", "tag_b"],  # Python List -> Redis Tag string
-        "nested_metadata": {"key": "value", "status": "active"},  # Python Dict -> JSON block
-        "regular_text": "A standard untouched string attribute"  # Regular string -> untouched
+        "nested_metadata": {
+            "key": "value",
+            "status": "active",
+        },  # Python Dict -> JSON block
+        "regular_text": "A standard untouched string attribute",  # Regular string -> untouched
     }
     dummy_float_vector = [0.25, 0.5, 0.75, -1.25]
 
     # When: Execute the mapping logic
-    normalized_doc = ingestion_cache._normalize_document_types(raw_generic_doc, dummy_float_vector)
+    normalized_doc = ingestion_cache._normalize_document_types(
+        raw_generic_doc, dummy_float_vector
+    )
 
     # Then: Verify data transformations boundaries
     # 1. Vector float list must be packed into contiguous Float32 C-bytes array
@@ -180,7 +206,9 @@ def test_normalize_document_types_strict_flattening_constraints(ingestion_cache)
     assert normalized_doc["custom_tags"] == "tag_a,tag_b"
 
     # 3. Polymorphic embedded dict maps must be flattened into valid JSON blocks
-    expected_json_block = json.dumps(raw_generic_doc["nested_metadata"], ensure_ascii=False)
+    expected_json_block = json.dumps(
+        raw_generic_doc["nested_metadata"], ensure_ascii=False
+    )
     assert normalized_doc["nested_metadata"] == expected_json_block
 
     # 4. Standard structural types should remain totally unaffected
@@ -192,7 +220,9 @@ def test_normalize_document_types_strict_flattening_constraints(ingestion_cache)
     assert "text_embedding" not in raw_generic_doc
 
 
-def test_execute_bulk_upsert_coordinates_pipeline_load(ingestion_cache, mock_redis_vl_search_index):
+def test_execute_bulk_upsert_coordinates_pipeline_load(
+    ingestion_cache, mock_redis_vl_search_index
+):
     """
     Nominal Case: Coordinate the structural normalization loop over a batch
     and verify the bulk transmission to the underlying RedisVL SearchIndex container.
@@ -202,18 +232,13 @@ def test_execute_bulk_upsert_coordinates_pipeline_load(ingestion_cache, mock_red
 
     # A minimal agnostic batch payload
     compiled_batch_payload = [
-        {
-            "id": "doc_unique_id",
-            "categories": ["cyber", "threat"]
-        }
+        {"id": "doc_unique_id", "categories": ["cyber", "threat"]}
     ]
     batch_embeddings: list[list[float | int]] = [[0.1, 0.2, 0.3]]
 
     # When: Execute the target bulk upsert operation
     ingestion_cache.execute_bulk_upsert(
-        payload=compiled_batch_payload,
-        embeddings=batch_embeddings,
-        id_field="id"
+        payload=compiled_batch_payload, embeddings=batch_embeddings, id_field="id"
     )
 
     # Then: Verify that the clean buffers are accurately forwarded to RedisVL loader
@@ -232,15 +257,25 @@ def test_execute_bulk_upsert_coordinates_pipeline_load(ingestion_cache, mock_red
     normalized_record = transmitted_data[0]
     assert normalized_record["id"] == "doc_unique_id"
     assert normalized_record["categories"] == "cyber,threat"  # List has been flattened
-    assert isinstance(normalized_record["text_embedding"], bytes)  # Vector has been packed to float32 bytes
+    assert isinstance(
+        normalized_record["text_embedding"], bytes
+    )  # Vector has been packed to float32 bytes
 
-def test_ingestion_cache_health_delegates_to_driver(ingestion_cache: IngestionCacheClient) -> None:
+
+def test_ingestion_cache_health_delegates_to_driver(
+    ingestion_cache: IngestionCacheClient,
+) -> None:
     """Verify health() delegates directly to the underlying driver."""
-    with patch.object(ingestion_cache._driver, "health", return_value=True) as mock_health:
+    with patch.object(
+        ingestion_cache._driver, "health", return_value=True
+    ) as mock_health:
         assert ingestion_cache.health() is True
         mock_health.assert_called_once()
 
-def test_ingestion_cache_close_delegates_to_driver(ingestion_cache: IngestionCacheClient) -> None:
+
+def test_ingestion_cache_close_delegates_to_driver(
+    ingestion_cache: IngestionCacheClient,
+) -> None:
     """Verify close() delegates connection pool shutdown directly to the underlying driver."""
     with patch.object(ingestion_cache._driver, "close") as mock_close:
         ingestion_cache.close()

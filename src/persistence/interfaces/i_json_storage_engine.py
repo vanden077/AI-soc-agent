@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 
 class IJsonStorageEngine(ABC):
@@ -9,7 +10,9 @@ class IJsonStorageEngine(ABC):
     """
 
     @abstractmethod
-    def get(self, key: str) -> str | int | float | bool | None | Mapping[str, Any] | list[Any]:
+    def get(
+        self, key: str
+    ) -> str | int | float | bool | None | Mapping[str, Any] | list[Any]:
         """Retrieves a JSON document stored under `key`, or None if missing."""
 
     @abstractmethod

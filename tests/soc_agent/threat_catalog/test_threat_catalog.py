@@ -1,5 +1,4 @@
 import pytest
-
 from src.soc_agent.threat_catalog import ThreatCatalog
 
 

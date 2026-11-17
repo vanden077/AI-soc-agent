@@ -1,10 +1,11 @@
 import logging
 
+from src.constants import Settings
 from src.persistence import PersistenceManager
 from src.persistence.interfaces import IJsonStorageEngine, IVectorSearchEngine
-from src.constants import Settings
 
 logger = logging.getLogger(__name__)
+
 
 def init_json_pool(settings: Settings) -> IJsonStorageEngine:
     """Create a persistence client for JSON documents holding an isolated connexion pool."""
@@ -27,9 +28,10 @@ def init_json_pool(settings: Settings) -> IJsonStorageEngine:
             "[JSON POOL STARTUP] Creating persistence client specialized in JSON documents, "
             f"on {settings.REDIS_HOST}:{settings.REDIS_PORT}, "
             f"db: {settings.REDIS_JSON_POOL_DB_ID}, "
-            f"failed because: {str(e)}"
+            f"failed because: {e!s}"
         )
-        raise e
+        raise
+
 
 def init_vector_pool(settings: Settings) -> IVectorSearchEngine:
     """Create a persistence client for VECTOR documents holding an isolated connexion pool."""
@@ -53,6 +55,6 @@ def init_vector_pool(settings: Settings) -> IVectorSearchEngine:
             "[VECTOR POOL STARTUP] Creating persistence client specialized in VECTOR documents, "
             f"on {settings.REDIS_HOST}:{settings.REDIS_PORT}, "
             f"db: {settings.REDIS_VECTOR_POOL_DB_ID} "
-            f"failed because: {str(e)}"
+            f"failed because: {e!s}"
         )
-        raise e
+        raise

@@ -22,7 +22,9 @@ def is_distance_valid(raw_distance: float, doc_id: str) -> bool:
     return True
 
 
-def clamp_distance_result(raw_distance: float, doc_id: str, metric: str) -> float | None:
+def clamp_distance_result(
+    raw_distance: float, doc_id: str, metric: str
+) -> float | None:
     """
     Geometric Guards: Applies hardware-level boundary clamping to absorb floating-point approximations.
 
@@ -63,6 +65,8 @@ def clamp_distance_result(raw_distance: float, doc_id: str, metric: str) -> floa
             normalized_similarity = 1.0 / (1.0 + clamped_distance)
 
         case _:
-            raise RuntimeError(f"Unsupported database structural index metric: {metric}")
+            raise RuntimeError(
+                f"Unsupported database structural index metric: {metric}"
+            )
 
     return normalized_similarity

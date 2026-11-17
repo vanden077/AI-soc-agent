@@ -1,5 +1,6 @@
 from typing import Any
 
+
 class StixCompiler:
     """
     Stateful Architectural Compilation component representing a single technique compilation context.
@@ -15,10 +16,12 @@ class StixCompiler:
         Enriches the input extracted data dictionary with semantic context without mutating it.
         """
         return {
-                "id": self._stix_object["mitre_id"], # <- because ingestion persistence client need a generic unique key.
-                **self._stix_object,
-                "compiled_text": self._compile_text()
-            }
+            "id": self._stix_object[
+                "mitre_id"
+            ],  # <- because ingestion persistence client need a generic unique key.
+            **self._stix_object,
+            "compiled_text": self._compile_text(),
+        }
 
     def _compile_text(self) -> str:
         """
@@ -26,19 +29,25 @@ class StixCompiler:
         """
         compiled_chunks = []
 
-        compiled_chunks.extend([
-            f"Technique ID: {self._stix_object['mitre_id']}",
-            f"Technique Name: {self._stix_object['technic_name']}",
-            f"Description: {self._stix_object['description']}",
-        ])
+        compiled_chunks.extend(
+            [
+                f"Technique ID: {self._stix_object['mitre_id']}",
+                f"Technique Name: {self._stix_object['technic_name']}",
+                f"Description: {self._stix_object['description']}",
+            ]
+        )
 
         # if stix object owns a "tactics" entry
         if self._stix_object.get("tactics", []):
-            compiled_chunks.append(f"Tactics: {', '.join(self._stix_object['tactics'])}")
+            compiled_chunks.append(
+                f"Tactics: {', '.join(self._stix_object['tactics'])}"
+            )
 
         # if stix object owns a "platforms" entry
         if self._stix_object.get("platforms", []):
-            compiled_chunks.append(f"Platforms: {', '.join(self._stix_object['platforms'])}")
+            compiled_chunks.append(
+                f"Platforms: {', '.join(self._stix_object['platforms'])}"
+            )
 
         # if stix object owns a "mutable-elements" entry
         if self._stix_object.get("mutable_elements", []):

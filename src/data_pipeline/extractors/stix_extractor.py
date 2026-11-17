@@ -6,15 +6,16 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class StixExtractor:
     """
     Architectural Extraction component responsible for isolating, parsing,
     and normalizing raw complex STIX 2.1 schemas into standard data dictionaries.
     """
+
     def __init__(self, stix_object: dict[str, Any]) -> None:
         self._stix_object = stix_object
         self._mitre_id: str = ""
-
 
     def extract_fields(self) -> dict[str, Any]:
         """
@@ -39,7 +40,6 @@ class StixExtractor:
         extracted["semantic_hash"] = StixExtractor._compute_dict_hash(extracted)
         return extracted
 
-
     def _extract_mitre_id(self) -> str:
         """Extracts and validates the MITRE ATT&CK identifier syntax from external references."""
         external_references = self._stix_object.get("external_references", [])
@@ -49,7 +49,9 @@ class StixExtractor:
                     mitre_id = ref.get("external_id", "").strip()
                     if re.match(r"^T\d{4}(?:\.\d{3})?$", mitre_id):
                         return mitre_id
-        raise ValueError("Invalid STIX object: MITRE ID (format Txxxx or Txxxx.xxx) not found or malformed.")
+        raise ValueError(
+            "Invalid STIX object: MITRE ID (format Txxxx or Txxxx.xxx) not found or malformed."
+        )
 
     def _extract_parent_id(self) -> str:
         """
@@ -68,7 +70,9 @@ class StixExtractor:
             technic_name = ""
 
         if not technic_name:
-            raise ValueError(f"Technique {self._mitre_id} is corrupted: 'name' field is missing or empty.")
+            raise ValueError(
+                f"Technique {self._mitre_id} is corrupted: 'name' field is missing or empty."
+            )
         return technic_name
 
     def _extract_description(self) -> str:
@@ -79,7 +83,9 @@ class StixExtractor:
             description = ""
 
         if not description:
-            raise ValueError(f"Technique {self._mitre_id} is corrupted: 'description' field is missing or empty.")
+            raise ValueError(
+                f"Technique {self._mitre_id} is corrupted: 'description' field is missing or empty."
+            )
         return description
 
     def _extract_platforms(self) -> list[str]:
@@ -102,7 +108,10 @@ class StixExtractor:
 
         tactics: list[str] = []
         for phase in phases:
-            if isinstance(phase, dict) and phase.get("kill_chain_name") == "mitre-attack":
+            if (
+                isinstance(phase, dict)
+                and phase.get("kill_chain_name") == "mitre-attack"
+            ):
                 phase_name = phase.get("phase_name")
                 if phase_name:
                     tactics.append(str(phase_name))
@@ -121,10 +130,9 @@ class StixExtractor:
                 field_name = elem.get("field")
                 field_desc = elem.get("description")
                 if field_name and field_desc:
-                    cleaned_elements.append({
-                        "field": str(field_name),
-                        "description": str(field_desc)
-                    })
+                    cleaned_elements.append(
+                        {"field": str(field_name), "description": str(field_desc)}
+                    )
 
         return sorted(cleaned_elements, key=StixExtractor._serialize_for_sorting)
 

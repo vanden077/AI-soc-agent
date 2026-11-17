@@ -1,13 +1,15 @@
 import logging
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator, Any
+from typing import Any
+
 import ijson
 
-from src.embedding.interfaces import IEmbeddingEngine
-from src.persistence.interfaces import IVectorIngestionEngine
 from src.data_pipeline.compilers.stix_compiler import StixCompiler
 from src.data_pipeline.extractors.stix_extractor import StixExtractor
 from src.data_pipeline.filters.stix_filter import StixFilter
+from src.embedding.interfaces import IEmbeddingEngine
+from src.persistence.interfaces import IVectorIngestionEngine
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +35,13 @@ class StixPipeline:
        will drop to milliseconds, scaling throughput exponentially.
     3. Tuning: Re-evaluate `batch_size` to 256 or higher once compute barriers are removed.
     """
+
     def __init__(
             self,
             cache_client: IVectorIngestionEngine,
             embedding_engine: IEmbeddingEngine,
             file_path: Path,
-            batch_size: int = 50
+            batch_size: int = 50,
     ) -> None:
         """
         Initializes the pipeline with required infrastructure and active embedding engine.
@@ -47,7 +50,7 @@ class StixPipeline:
         self.embedding_engine = embedding_engine
         self._file_path = file_path
         self._batch_size: int = batch_size
-        self._remote_hashes: dict[str,str] = {}
+        self._remote_hashes: dict[str, str] = {}
 
     def run(self) -> None:
         """
@@ -67,7 +70,9 @@ class StixPipeline:
         """
         try:
             if not self._file_path.exists():
-                raise FileNotFoundError(f"Target STIX file not found at: {self._file_path}")
+                raise FileNotFoundError(
+                    f"Target STIX file not found at: {self._file_path}"
+                )
 
             # [Step 1]
             self._remote_hashes = self.cache_client.fetch_remote_hashes()
@@ -75,38 +80,44 @@ class StixPipeline:
             batch_generator = self._build_batches()
 
             try:
-                for batch_idx, (batch_buffer, text_embedding_buffer) in enumerate(batch_generator, start=1):
+                for batch_idx, (batch_buffer, text_embedding_buffer) in enumerate(
+                        batch_generator, start=1
+                ):
                     # Capture batch boundaries for observability
                     start_mitre_id = batch_buffer[0]["id"]
                     end_mitre_id = batch_buffer[-1]["id"]
 
                     try:
                         # [Step 3]
-                        embeddings = self.embedding_engine.embed_documents(text_embedding_buffer)
+                        embeddings = self.embedding_engine.embed_documents(
+                            text_embedding_buffer
+                        )
                         # [Step 4]
                         self.cache_client.execute_bulk_upsert(
-                            payload=batch_buffer,
-                            embeddings=embeddings,
-                            id_field="id"
+                            payload=batch_buffer, embeddings=embeddings, id_field="id"
                         )
                         # [Step 5] ONLY the mutations of the current batch (1 RTT)
-                        batch_signatures = {doc["mitre_id"]: doc["semantic_hash"] for doc in batch_buffer}
+                        batch_signatures = {
+                            doc["mitre_id"]: doc["semantic_hash"]
+                            for doc in batch_buffer
+                        }
                         self.cache_client.set_remote_hashes(batch_signatures)
 
-                        logger.info(f"Successfully processed batch #{batch_idx} [{start_mitre_id} -> {end_mitre_id}]")
+                        logger.info(
+                            f"Successfully processed batch #{batch_idx} [{start_mitre_id} -> {end_mitre_id}]"
+                        )
                     except Exception as batch_err:
                         # Isolation guardrail: catch errors on the flight to print precision post-mortem state
                         logger.error(
                             f"CRITICAL: Ingestion failure encountered on Batch #{batch_idx}. "
                             f"Range: {start_mitre_id} to {end_mitre_id}. Reason: {batch_err}"
                         )
-                        raise batch_err
+                        raise
             finally:
                 batch_generator.close()
         except Exception as err:
-            logger.error(f"Pipeline failed because: {str(err)}")
-            raise err
-
+            logger.error(f"Pipeline failed because: {err!s}")
+            raise
 
     # ============================================================================
     # PRIVATE PIPELINE STEPS
@@ -125,17 +136,19 @@ class StixPipeline:
             stix_objects = ijson.items(f, "objects.item")
 
             for stix_object in stix_objects:
-                objects_read+=1
+                objects_read += 1
                 # [Step 2.a]
-                extracted_data = self._filter_extract_stix_object(stix_object=stix_object)
+                extracted_data = self._filter_extract_stix_object(
+                    stix_object=stix_object
+                )
 
                 if extracted_data is None:
-                    objects_evicted+=1
+                    objects_evicted += 1
                     continue
 
                 # [Step 2.b]
                 if not self._need_upsert(extracted_data=extracted_data):
-                    objects_up_to_date+=1
+                    objects_up_to_date += 1
                     continue
 
                 # [Step 2.c]
@@ -143,7 +156,7 @@ class StixPipeline:
                 compiled_payload = stix_compiler.compile_fields()
 
                 # [Step 2.d]
-                objects_kept+=1
+                objects_kept += 1
                 batch_buffer.append(compiled_payload)
                 text_embedding_buffer.append(compiled_payload["compiled_text"])
 
@@ -156,15 +169,20 @@ class StixPipeline:
             if batch_buffer:
                 yield batch_buffer, text_embedding_buffer
 
-        logger.info(f"Successfully processed STIX Bundle stream: {self._file_path.name}")
-        logger.info(f"{objects_read} objects read, "
-                    f"{objects_kept} objects kept, "
-                    f"{objects_up_to_date} objects already up to date, "
-                    f"{objects_evicted} objects evicted")
-
+        logger.info(
+            f"Successfully processed STIX Bundle stream: {self._file_path.name}"
+        )
+        logger.info(
+            f"{objects_read} objects read, "
+            f"{objects_kept} objects kept, "
+            f"{objects_up_to_date} objects already up to date, "
+            f"{objects_evicted} objects evicted"
+        )
 
     @staticmethod
-    def _filter_extract_stix_object(stix_object: dict[str, Any]) -> dict[str, Any] | None:
+    def _filter_extract_stix_object(
+            stix_object: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """
         From a given stix object extracted from stix document,
         check object is valid (not deprecated, and is an attack pattern)
@@ -179,7 +197,6 @@ class StixPipeline:
             logger.debug(f"Evicting malformed STIX object because: {err}")
             return None
 
-
     def _need_upsert(self, extracted_data: dict[str, Any]) -> bool:
         """
         From a given stix object extracted from stix document, and filtered by _filter_extract_stix_object
@@ -188,4 +205,7 @@ class StixPipeline:
         """
         if extracted_data["mitre_id"] not in self._remote_hashes:
             return True
-        return extracted_data["semantic_hash"] != self._remote_hashes[extracted_data["mitre_id"]]
+        return (
+                extracted_data["semantic_hash"]
+                != self._remote_hashes[extracted_data["mitre_id"]]
+        )

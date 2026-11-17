@@ -2,7 +2,6 @@ import logging
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.llm.interfaces import ILlmEngine
 from src.soc_agent.agent import SocAgent
 from src.soc_agent.prompt_factory import PromptFactory
@@ -45,7 +44,10 @@ def test_analyze_ingress_flow_nominal_delegates_to_llm_engine(
             response_schema=GuardLayerVerdict,
         )
         assert verdict == expected_verdict
-        assert "[SOC AGENT] Single-pass Guard Layer analysis triggered for platform: 'windows'" in caplog.text
+        assert (
+            "[SOC AGENT] Single-pass Guard Layer analysis triggered for platform: 'windows'"
+            in caplog.text
+        )
 
 
 def test_analyze_ingress_flow_logs_and_reraises_on_exception(
@@ -60,7 +62,9 @@ def test_analyze_ingress_flow_logs_and_reraises_on_exception(
             "build_guard_layer_prompt",
             return_value=[("system", "s"), ("user", "u")],
         )
-        mock_llm_engine.analyze_event.side_effect = RuntimeError("LLM inference timeout")
+        mock_llm_engine.analyze_event.side_effect = RuntimeError(
+            "LLM inference timeout"
+        )
 
         agent = SocAgent(llm_engine=mock_llm_engine)
 
@@ -70,4 +74,7 @@ def test_analyze_ingress_flow_logs_and_reraises_on_exception(
                 raw_log="EventID=10 TargetImage=lsass.exe",
             )
 
-        assert "[SOC AGENT] Semantic triage flow collapsed: LLM inference timeout" in caplog.text
+        assert (
+            "[SOC AGENT] Semantic triage flow collapsed: LLM inference timeout"
+            in caplog.text
+        )

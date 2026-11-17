@@ -1,5 +1,5 @@
 import importlib
-from typing import Any, Type, ClassVar
+from typing import Any, ClassVar
 
 from src.llm.interfaces.i_llm_engine import ILlmEngine
 from src.llm.providers.llm_provider import LlmProvider
@@ -9,11 +9,14 @@ class LlmManager:
     """
     Factory pattern for LLM engines using lazy dynamic resolution.
     """
+
     _ENGINE_REGISTRY: ClassVar[dict[LlmProvider, str]] = {
         LlmProvider.OLLAMA: "src.llm.engine.ollama.ollama_engine.OllamaEngine",
     }
 
-    def __init__(self, base_url: str, llm_engine: str, llm_model: str, temperature: float = 0.0) -> None:
+    def __init__(
+        self, base_url: str, llm_engine: str, llm_model: str, temperature: float = 0.0
+    ) -> None:
         self._engine: ILlmEngine[Any]
         self._base_url = base_url
         self._llm_engine = llm_engine
@@ -32,7 +35,9 @@ class LlmManager:
 
         engine_path = self._ENGINE_REGISTRY.get(provider_enum)
         if engine_path is None:
-            raise NotImplementedError(f"Engine '{provider_enum}' is listed but not yet implemented.")
+            raise NotImplementedError(
+                f"Engine '{provider_enum}' is listed but not yet implemented."
+            )
 
         engine_cls = self._load_engine_class(engine_path)
         self._engine = engine_cls(
@@ -42,7 +47,7 @@ class LlmManager:
         )
 
     @staticmethod
-    def _load_engine_class(dotted_path: str) -> Type[ILlmEngine[Any]]:
+    def _load_engine_class(dotted_path: str) -> type[ILlmEngine[Any]]:
         """Dynamically import an engine class from its dotted module path."""
         module_path, class_name = dotted_path.rsplit(".", 1)
         module = importlib.import_module(module_path)

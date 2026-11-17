@@ -3,6 +3,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class StixFilter:
     """
     Architectural Guard component responsible for validating raw STIX 2.1 nodes.
@@ -11,9 +12,9 @@ class StixFilter:
     (attack-patterns) pass through the ingestion pipelines, systematically evicting
     deprecated data, and non-technical structural artifacts.
     """
+
     def __init__(self, stix_object: dict[str, Any]) -> None:
         self._stix_object = stix_object
-
 
     def is_valid_technique(self) -> bool:
         """
@@ -40,7 +41,10 @@ class StixFilter:
 
         # Guard 2: Enforce lifecycle and data lifecycle boundaries
         # Discards obsolete technical behaviors to prevent RAM bloat and historical false positives
-        if self._stix_object.get("revoked") is True or self._stix_object.get("deprecated") is True:
+        if (
+            self._stix_object.get("revoked") is True
+            or self._stix_object.get("deprecated") is True
+        ):
             return False
 
         return True

@@ -1,4 +1,5 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 import redis.exceptions
 
@@ -15,15 +16,17 @@ def test_driver_instance(redis_driver_factory):
 
 
 def test_driver_pool(redis_driver_factory):
-    """Test connexion pool availability. """
+    """Test connexion pool availability."""
     driver = redis_driver_factory()
     driver.init_pool()
-    assert driver.pool_size == 1 # now pool is ready with 1 connexion
+    assert driver.pool_size == 1  # now pool is ready with 1 connexion
 
 
 def test_driver_pool_exception(mock_redis_driver, redis_driver_factory):
     """Make Redis crash when init connexion pool."""
-    mock_redis_driver.side_effect = redis.exceptions.ConnectionError("SSL handshake failed.")
+    mock_redis_driver.side_effect = redis.exceptions.ConnectionError(
+        "SSL handshake failed."
+    )
     driver = redis_driver_factory()
 
     with pytest.raises(redis.exceptions.ConnectionError, match="SSL handshake failed."):
@@ -34,13 +37,17 @@ def test_getting_client_raise_if_no_pool(redis_driver_factory):
     """Test getting Redis client connexion pool raise exception if pool is not initialized"""
     driver = redis_driver_factory()
 
-    with pytest.raises(RuntimeError,
-               match="Critical: pool connexion is not initialized, "
-                     "please call init_pool before performing Redis operations."):
-        driver.redis_client
+    with pytest.raises(
+            RuntimeError,
+            match="Critical: pool connexion is not initialized, "
+                  "please call init_pool before performing Redis operations.",
+    ):
+        _ = driver.redis_client
 
 
-def test_init_pool_preserves_same_client_instance(mock_redis_driver, redis_driver_factory):
+def test_init_pool_preserves_same_client_instance(
+        mock_redis_driver, redis_driver_factory
+):
     """Should preserve the exact same internal client instance if init_pool is called multiple times."""
     driver = redis_driver_factory()
 
@@ -56,6 +63,7 @@ def test_init_pool_preserves_same_client_instance(mock_redis_driver, redis_drive
     # The return_value in memory is still the first one, proving no second instance was forged
     assert id(mock_redis_driver.return_value) == first_client_id
 
+
 def test_close_disables_cache_operations(redis_driver_factory):
     """Should successfully close the pool and release underlying resources."""
     driver = redis_driver_factory()
@@ -63,7 +71,9 @@ def test_close_disables_cache_operations(redis_driver_factory):
     driver.close()
 
     # Check the connection pool state
-    assert driver.redis_client.connection_pool.pid is not None  # Pool is still bound to the PID
+    assert (
+            driver.redis_client.connection_pool.pid is not None
+    )  # Pool is still bound to the PID
     # Check that no active connections are remaining
     assert len(driver.redis_client.connection_pool._available_connections) == 0
 
@@ -81,14 +91,17 @@ def test_health_check_exception(redis_driver_factory, caplog):
     driver.init_pool()
 
     mock_client = MagicMock()
-    mock_client.ping.side_effect = ConnectionError("Redis AUTH failed or Network timeout.")
+    mock_client.ping.side_effect = ConnectionError(
+        "Redis AUTH failed or Network timeout."
+    )
     driver._client = mock_client
 
     assert driver.health() is False
     assert (
-        "Error something went wrong, cant ping Cache server: Redis AUTH failed or Network timeout."
-        in caplog.messages
+            "Error something went wrong, cant ping Cache server: Redis AUTH failed or Network timeout."
+            in caplog.messages
     )
+
 
 def test_list_keys(redis_driver_factory):
     """Test listing keys"""
@@ -162,14 +175,7 @@ def test_list_keys_pattern_matching(redis_driver_factory):
         driver.flush_db()
 
 
-@pytest.mark.parametrize(
-    "keys",
-    [
-        (0, [b'1', b'2']),
-        (0, [1, 2]),
-        (0, [True, False])
-    ]
-)
+@pytest.mark.parametrize("keys", [(0, [b"1", b"2"]), (0, [1, 2]), (0, [True, False])])
 def test_list_keys_are_cast_in_str(redis_driver_factory, mocker, keys):
     """Test keys that are not Strings are cast to str before returning response"""
     mocker.patch("redis.commands.core.ScanCommands.scan", return_value=keys)
@@ -199,7 +205,9 @@ def test_list_keys_exception(redis_driver_factory, mocker, caplog):
 
 
 ####### SPECIFIC PART FOR VECTORS #######
-def test_init_search_index_lifecycle_success(redis_driver_factory, mock_redis_vl_search_index):
+def test_init_search_index_lifecycle_success(
+        redis_driver_factory, mock_redis_vl_search_index
+):
     """Should successfully bind a valid SearchIndex instance to the driver."""
     driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
@@ -212,8 +220,12 @@ def test_init_search_index_with_non_vector_client_raises(redis_driver_factory):
     driver = redis_driver_factory(decode_responses=False)
     driver.init_pool()
 
-    with pytest.raises(RuntimeError, match="Critical: This persistence client instance was initialized without vector capabilities."):
+    with pytest.raises(
+            RuntimeError,
+            match="Critical: This persistence client instance was initialized without vector capabilities.",
+    ):
         driver.init_search_index("mitre_attack_v1")
+
 
 @pytest.mark.parametrize(
     "schema_path",
@@ -223,15 +235,23 @@ def test_init_search_index_with_non_vector_client_raises(redis_driver_factory):
         "",
     ],
 )
-def test_init_search_index_raises_value_error_on_none(redis_driver_factory, schema_path):
+def test_init_search_index_raises_value_error_on_none(
+        redis_driver_factory, schema_path
+):
     """Should strictly raise a ValueError if the injected search index is None or empty."""
     driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
 
-    with pytest.raises(ValueError, match="Critical: path to RediVL index schema cannot be None or empty."):
+    with pytest.raises(
+            ValueError,
+            match="Critical: path to RediVL index schema cannot be None or empty.",
+    ):
         driver.init_search_index(schema_path)
 
-def test_init_search_index_skips_creation_when_already_exists(redis_driver_factory, mock_redis_vl_search_index):
+
+def test_init_search_index_skips_creation_when_already_exists(
+        redis_driver_factory, mock_redis_vl_search_index
+):
     """Should bind existing SearchIndex without calling create() when index already exists."""
     mock_redis_vl_search_index.exists.return_value = True
     driver = redis_driver_factory(decode_responses=False, vector_capability=True)
@@ -242,6 +262,7 @@ def test_init_search_index_skips_creation_when_already_exists(redis_driver_facto
     mock_redis_vl_search_index.create.assert_not_called()
     assert driver.search_index is mock_redis_vl_search_index
 
+
 @pytest.mark.parametrize(
     "exceptions",
     [
@@ -251,22 +272,30 @@ def test_init_search_index_skips_creation_when_already_exists(redis_driver_facto
     ],
 )
 def test_init_search_index_crash_on_creating_schema_from_yaml(
-        redis_driver_factory,
-        exceptions,
-        caplog
+        redis_driver_factory, exceptions, caplog
 ):
     """Should raise ValueError, TypeError, or RuntimeError if SearchIndex.from_yaml crashes."""
     driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
 
-    with patch("src.persistence.engine.redis.driver.redis_driver.SearchIndex") as mock_search_index_cls:
-        mock_search_index_cls.from_yaml.side_effect = exceptions("error message from RedisVL")
+    with patch(
+            "src.persistence.engine.redis.driver.redis_driver.SearchIndex"
+    ) as mock_search_index_cls:
+        mock_search_index_cls.from_yaml.side_effect = exceptions(
+            "error message from RedisVL"
+        )
 
         with pytest.raises(exceptions):
             driver.init_search_index("mitre_attack_v1")
-        assert "Error while creating search index from mitre_attack_v1: error message from RedisVL" in caplog.messages
+        assert (
+                "Error while creating search index from mitre_attack_v1: error message from RedisVL"
+                in caplog.messages
+        )
 
-def test_get_index_metadata_fields_extraction_success(redis_driver_factory, mock_redis_vl_search_index):
+
+def test_get_index_metadata_fields_extraction_success(
+        redis_driver_factory, mock_redis_vl_search_index
+):
     """Should correctly extract non-vector metadata return fields from the index schema."""
     driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
@@ -284,8 +313,8 @@ def test_get_index_metadata_fields_raise_because_invalid_client(redis_driver_fac
     driver.init_pool()
 
     with pytest.raises(
-        RuntimeError,
-        match="This persistence client instance was initialized without vector capabilities.",
+            RuntimeError,
+            match="This persistence client instance was initialized without vector capabilities.",
     ):
         driver.get_index_metadata_fields()
 
@@ -295,11 +324,15 @@ def test_get_index_metadata_fields_raise_because_not_loaded(redis_driver_factory
     driver = redis_driver_factory(decode_responses=False, vector_capability=True)
     driver.init_pool()
 
-    with pytest.raises(RuntimeError, match="Search index has not been loaded into the driver yet."):
+    with pytest.raises(
+            RuntimeError, match="Search index has not been loaded into the driver yet."
+    ):
         driver.get_index_metadata_fields()
 
 
-def test_get_index_vector_fields_catalog_success(redis_driver_factory, mock_redis_vl_search_index):
+def test_get_index_vector_fields_catalog_success(
+        redis_driver_factory, mock_redis_vl_search_index
+):
     """
     Normal process, everything is ok, function should return a dict of VectorFieldSpecs.
     """
@@ -328,7 +361,10 @@ def test_get_index_vector_fields_catalog_success(redis_driver_factory, mock_redi
     assert image_spec.algorithm == "flat"
     assert image_spec.source_path == "$.payload.image_embedding"
 
-def test_get_index_vector_fields_catalog_fallback_source_path(redis_driver_factory, mock_redis_vl_search_index):
+
+def test_get_index_vector_fields_catalog_fallback_source_path(
+        redis_driver_factory, mock_redis_vl_search_index
+):
     """Should fall back to field_name as source_path when explicit path is omitted in schema."""
     mock_redis_vl_search_index.schema.model_dump.return_value = {
         "fields": {
@@ -350,7 +386,10 @@ def test_get_index_vector_fields_catalog_fallback_source_path(redis_driver_facto
 
     assert vectors_catalog["embedding"].source_path == "embedding"
 
-def test_get_index_vector_fields_catalog_fail_no_vectors(redis_driver_factory, mock_redis_vl_search_index):
+
+def test_get_index_vector_fields_catalog_fail_no_vectors(
+        redis_driver_factory, mock_redis_vl_search_index
+):
     """
     Check driver raises exception if schema does not contain any vectors.
     """
@@ -366,11 +405,12 @@ def test_get_index_vector_fields_catalog_fail_no_vectors(redis_driver_factory, m
     driver.init_search_index("mitre_attack_v1")
 
     with pytest.raises(
-        ValueError,
-        match="Invalid index configuration: No explicit vector field detected. "
-        "Please check the index YAML file; it must contain at least one vector field.",
+            ValueError,
+            match="Invalid index configuration: No explicit vector field detected. "
+                  "Please check the index YAML file; it must contain at least one vector field.",
     ):
         driver.get_index_vector_fields_catalog()
+
 
 @pytest.mark.parametrize(
     "yaml_prefix, expected_clean_prefix",
@@ -380,10 +420,10 @@ def test_get_index_vector_fields_catalog_fail_no_vectors(redis_driver_factory, m
     ],
 )
 def test_get_index_prefix_formatting(
-    redis_driver_factory,
-    mock_redis_vl_search_index,
-    yaml_prefix,
-    expected_clean_prefix,
+        redis_driver_factory,
+        mock_redis_vl_search_index,
+        yaml_prefix,
+        expected_clean_prefix,
 ):
     """Should guarantee that the returned index prefix always terminates with a structural colon."""
     driver = redis_driver_factory(decode_responses=False, vector_capability=True)

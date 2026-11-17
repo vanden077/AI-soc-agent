@@ -16,7 +16,9 @@ def test_redis_client_insert_and_get(json_cache: JsonCacheClient, flush_json_cac
     assert res_get == data
 
 
-def test_redis_client_get_exception(mocker, json_cache: JsonCacheClient, flush_json_cache, caplog):
+def test_redis_client_get_exception(
+    mocker, json_cache: JsonCacheClient, flush_json_cache, caplog
+):
     """Make get command crash from driver"""
     redis_mock = mocker.patch(
         "redis.commands.json.commands.JSONCommands.get",
@@ -94,6 +96,7 @@ def test_redis_client_delete_exception(mocker, json_cache: JsonCacheClient, capl
         in caplog.messages
     )
 
+
 def test_redis_client_get_key_none(json_cache: JsonCacheClient, flush_json_cache):
     """Test getting a key of type None don't crash and just return None"""
     cache_key = "test"
@@ -107,11 +110,13 @@ def test_redis_client_get_key_none(json_cache: JsonCacheClient, flush_json_cache
     res_get = json_cache.get(key=None)
     assert res_get is None
 
+
 def test_json_cache_health_delegates_to_driver(json_cache: JsonCacheClient) -> None:
     """Verify health() delegates directly to the underlying driver."""
     with patch.object(json_cache._driver, "health", return_value=True) as mock_health:
         assert json_cache.health() is True
         mock_health.assert_called_once()
+
 
 def test_json_cache_close_delegates_to_driver(json_cache: JsonCacheClient) -> None:
     """Verify close() delegates connection pool shutdown directly to the underlying driver."""

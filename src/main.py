@@ -1,20 +1,25 @@
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from src.persistence.interfaces import IJsonStorageEngine, IVectorSearchEngine
-from src.llm.interfaces import ILlmEngine
-from src.embedding.interfaces import IEmbeddingEngine
 from src.api.dev_setup import configure_dev_helpers
-from src.constants import Settings
-
 from src.api.routers import health_route, threat_analyzer
-from src.startup import load_env_vars, init_embedding_engine, run_pipeline, init_llm, init_json_pool, init_vector_pool
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(levelname)-7s:  [APP] %(message)s"
+from src.constants import Settings
+from src.embedding.interfaces import IEmbeddingEngine
+from src.llm.interfaces import ILlmEngine
+from src.persistence.interfaces import IJsonStorageEngine, IVectorSearchEngine
+from src.startup import (
+    download_stix_file,
+    init_embedding_engine,
+    init_json_pool,
+    init_llm,
+    init_vector_pool,
+    load_env_vars,
+    run_pipeline,
 )
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)-7s:  %(message)s")
 
 noisy_loggers = [
     "langchain",
@@ -23,7 +28,7 @@ noisy_loggers = [
     "ollama",
     "httpx",
     "httpcore",
-    "redisvl"
+    "redisvl",
 ]
 
 for logger_name in noisy_loggers:
@@ -49,12 +54,17 @@ async def lifespan(ai_soc_agent: FastAPI):
         configure_dev_helpers(ai_soc_agent)
 
     # ==============================================================================
-    # PHASE 2: Initialize embedding engine, and push its instance into context
+    # PHASE 2: Check JSON stix mitre is locally present, if not, download it
+    # ==============================================================================
+    download_stix_file(settings=settings)
+
+    # ==============================================================================
+    # PHASE 3: Initialize embedding engine, and push its instance into context
     # ==============================================================================
     embedding_engine: IEmbeddingEngine = init_embedding_engine(settings=settings)
 
     # ==============================================================================
-    # PHASE 3: Check mitre_attack_v1 vector database integrity
+    # PHASE 4: Check mitre_attack_v1 vector database integrity
     # ==============================================================================
     run_pipeline(settings=settings, embedding_engine=embedding_engine)
 
@@ -63,13 +73,13 @@ async def lifespan(ai_soc_agent: FastAPI):
 
     try:
         # ==============================================================================
-        # PHASE 4: Prepare connexions pools for runtime, and push instances into context
+        # PHASE 5: Prepare connexions pools for runtime, and push instances into context
         # ==============================================================================
         json_cache: IJsonStorageEngine = init_json_pool(settings=settings)
         vector_cache: IVectorSearchEngine = init_vector_pool(settings=settings)
 
         # ==============================================================================
-        # PHASE 5: Initialize LLM engine, and push its instance into context
+        # PHASE 6: Initialize LLM engine, and push its instance into context
         # ==============================================================================
         llm_engine: ILlmEngine = init_llm(settings=settings)
 
@@ -81,7 +91,7 @@ async def lifespan(ai_soc_agent: FastAPI):
             "embedding_engine": embedding_engine,
             "llm_engine": llm_engine,
             "json_cache": json_cache,
-            "vector_cache": vector_cache
+            "vector_cache": vector_cache,
         }
     finally:
         # Gracefully release json persistence connexions pool
@@ -92,6 +102,7 @@ async def lifespan(ai_soc_agent: FastAPI):
             vector_cache.close()
 
     logger.info("👋 Gracefully closed app... Bye")
+
 
 app = FastAPI(title="AI Soc agent.", lifespan=lifespan)
 app.include_router(health_route)

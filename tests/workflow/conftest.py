@@ -2,7 +2,6 @@ from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.embedding.interfaces import IEmbeddingEngine
 from src.llm.interfaces import ILlmEngine
 from src.persistence.interfaces import IVectorSearchEngine
@@ -21,6 +20,7 @@ def workflow_deps(mocker) -> tuple[MagicMock, MagicMock, MagicMock]:
 @pytest.fixture
 def mitre_technique_factory() -> Callable[[str, float], MitreTechnique]:
     """Factory fixture building valid MitreTechnique domain models for similarity tests."""
+
     def _create(mitre_id: str, similarity: float) -> MitreTechnique:
         return MitreTechnique(
             mitre_id=mitre_id,

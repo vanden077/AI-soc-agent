@@ -1,5 +1,5 @@
-from collections.abc import Callable
 import logging
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 from src.api.schemas import AvailablePlatforms
@@ -128,8 +128,13 @@ async def test_execute_runs_full_knn_pipeline_and_filters_clustered_matches(
         assert report.is_threat is True
         assert report.confidence_score == 0.91
         assert report.semantic_summary == summary
-        assert [t.mitre_id for t in report.matched_techniques] == ["T1003.001", "T1059.001"]
-        assert "Kept 2/3 MITRE techniques (top_score=0.900, cutoff=0.865)." in caplog.text
+        assert [t.mitre_id for t in report.matched_techniques] == [
+            "T1003.001",
+            "T1059.001",
+        ]
+        assert (
+            "Kept 2/3 MITRE techniques (top_score=0.900, cutoff=0.865)." in caplog.text
+        )
 
 
 async def test_execute_returns_empty_techniques_when_knn_returns_no_matches(
@@ -201,4 +206,7 @@ async def test_execute_discards_all_matches_below_min_similarity_floor(
 
         assert report.is_threat is True
         assert report.matched_techniques == []
-        assert "Top MITRE match similarity (0.440) below floor threshold (0.45)." in caplog.text
+        assert (
+            "Top MITRE match similarity (0.440) below floor threshold (0.45)."
+            in caplog.text
+        )

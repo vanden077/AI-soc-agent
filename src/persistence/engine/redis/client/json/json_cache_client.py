@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from src.persistence.engine.redis.driver.redis_driver import RedisDriver
 from src.persistence.interfaces.i_json_storage_engine import IJsonStorageEngine
@@ -11,10 +12,13 @@ class JsonCacheClient(IJsonStorageEngine):
     """
     Redis client for JSON documents.
     """
+
     def __init__(self, driver: RedisDriver) -> None:
         self._driver = driver
 
-    def get(self, key: str) -> str | int | float | bool | None | Mapping[str, Any] | list[Any]:
+    def get(
+        self, key: str
+    ) -> str | int | float | bool | None | Mapping[str, Any] | list[Any]:
         """
         Get data from persistence
         :param key: the key to retrieve
@@ -23,7 +27,7 @@ class JsonCacheClient(IJsonStorageEngine):
         """
         try:
             return self._driver.redis_client.json().get(name=key)
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             logger.error(f"Cache client error while getting key {key}: {err}")
             return None
 
@@ -42,7 +46,7 @@ class JsonCacheClient(IJsonStorageEngine):
             )
             self._driver.redis_client.expire(name=key, time=ttl)
             return bool(result)
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             logger.error(f"Cache client error while inserting key {key}: {err}")
             return False
 
@@ -56,7 +60,7 @@ class JsonCacheClient(IJsonStorageEngine):
         """
         try:
             return self._driver.redis_client.delete(key)
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             logger.error(f"Cache client error while deleting key {key}: {err}")
             return 0
 

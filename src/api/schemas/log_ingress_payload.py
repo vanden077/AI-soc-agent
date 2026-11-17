@@ -1,9 +1,11 @@
 from enum import StrEnum
+
 from pydantic import BaseModel, Field, field_validator
 
 
 class AvailablePlatforms(StrEnum):
     """Official MITRE ATT&CK Enterprise platforms ecosystem matrix mapping."""
+
     WINDOWS = "windows"
     MACOS = "macos"
     LINUX = "linux"
@@ -16,16 +18,17 @@ class AvailablePlatforms(StrEnum):
     CONTAINERS = "containers"
     ESXI = "esxi"
 
+
 class LogIngressPayload(BaseModel):
     """Strict inbound payload model protecting downstream AI embedding tensors."""
+
     platform: AvailablePlatforms = Field(
         description="The technical ecosystem origin (e.g., Windows, Linux, Identity Provider, AWS)."
     )
     raw_log: str = Field(
         max_length=12000,  # Safety guard preventing adversarial memory bloat (OOM)
-        description="The raw string content or sequential sequence log batch to evaluate."
+        description="The raw string content or sequential sequence log batch to evaluate.",
     )
-
 
     @field_validator("platform", mode="before")
     @classmethod

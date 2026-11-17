@@ -1,6 +1,8 @@
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from tests.dataset_test import STIX_MOCK
 
 
@@ -40,10 +42,7 @@ def mock_infra() -> dict[str, MagicMock]:
     # Adhering to strict readability rules: using the named stub function
     mock_embedding.embed_documents.side_effect = _stub_embed_documents
 
-    return {
-        "redis": mock_redis,
-        "embedding": mock_embedding
-    }
+    return {"redis": mock_redis, "embedding": mock_embedding}
 
 
 @pytest.fixture

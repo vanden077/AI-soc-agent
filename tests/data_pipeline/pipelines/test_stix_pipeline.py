@@ -1,9 +1,9 @@
 import logging
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-
 from src.data_pipeline.pipelines.stix_pipeline import StixPipeline
+
 
 # ============================================================================
 # TEST BATCH CHUNKING
@@ -12,8 +12,12 @@ from src.data_pipeline.pipelines.stix_pipeline import StixPipeline
 @patch("src.data_pipeline.pipelines.stix_pipeline.StixExtractor")
 @patch("src.data_pipeline.pipelines.stix_pipeline.StixCompiler")
 def test_stix_pipeline_stream_chunking_boundaries_and_tail_flush(
-        mock_compiler_cls, mock_extractor_cls, mock_filter_cls,
-        mock_file_context, mock_infra, stix_mock_stream
+        mock_compiler_cls,
+        mock_extractor_cls,
+        mock_filter_cls,
+        mock_file_context,
+        mock_infra,
+        stix_mock_stream,
 ):
     """
     GIVEN a STIX stream of 5 objects and a configuration of batch_size=2
@@ -43,11 +47,36 @@ def test_stix_pipeline_stream_chunking_boundaries_and_tail_flush(
     # Force fake StixCompiler to return a minimalistic valid compiled dict.
     mock_compiler_instance = MagicMock()
     mock_compiler_instance.compile_fields.side_effect = [
-        {"id": "T1001", "mitre_id": "T1001", "semantic_hash": "h1", "compiled_text": "Txt 1"},
-        {"id": "T1002", "mitre_id": "T1002", "semantic_hash": "h2", "compiled_text": "Txt 2"},
-        {"id": "T1003", "mitre_id": "T1003", "semantic_hash": "h3", "compiled_text": "Txt 3"},
-        {"id": "T1004", "mitre_id": "T1004", "semantic_hash": "h4", "compiled_text": "Txt 4"},
-        {"id": "T1005", "mitre_id": "T1005", "semantic_hash": "h5", "compiled_text": "Txt 5"},
+        {
+            "id": "T1001",
+            "mitre_id": "T1001",
+            "semantic_hash": "h1",
+            "compiled_text": "Txt 1",
+        },
+        {
+            "id": "T1002",
+            "mitre_id": "T1002",
+            "semantic_hash": "h2",
+            "compiled_text": "Txt 2",
+        },
+        {
+            "id": "T1003",
+            "mitre_id": "T1003",
+            "semantic_hash": "h3",
+            "compiled_text": "Txt 3",
+        },
+        {
+            "id": "T1004",
+            "mitre_id": "T1004",
+            "semantic_hash": "h4",
+            "compiled_text": "Txt 4",
+        },
+        {
+            "id": "T1005",
+            "mitre_id": "T1005",
+            "semantic_hash": "h5",
+            "compiled_text": "Txt 5",
+        },
     ]
     mock_compiler_cls.return_value = mock_compiler_instance
 
@@ -55,7 +84,7 @@ def test_stix_pipeline_stream_chunking_boundaries_and_tail_flush(
         cache_client=mock_infra["redis"],
         embedding_engine=mock_infra["embedding"],
         file_path=mock_file_context,
-        batch_size=2
+        batch_size=2,
     )
 
     # Act
@@ -90,7 +119,9 @@ def test_stix_pipeline_stream_chunking_boundaries_and_tail_flush(
 # ============================================================================
 # TEST NOMINAL CONDITIONS
 # ============================================================================
-def test_stix_pipeline_nominal_ingestion_flow(mock_file_context, mock_infra, stix_mock_stream):
+def test_stix_pipeline_nominal_ingestion_flow(
+        mock_file_context, mock_infra, stix_mock_stream
+):
     """
     GIVEN a valid STIX bundle file with 5 objects (2 valid techniques, 3 invalid/legacy items)
     WHEN running the StixPipeline under a clean nominal infrastructure state
@@ -103,7 +134,7 @@ def test_stix_pipeline_nominal_ingestion_flow(mock_file_context, mock_infra, sti
         cache_client=mock_infra["redis"],
         embedding_engine=mock_infra["embedding"],
         file_path=mock_file_context,
-        batch_size=50
+        batch_size=50,
     )
     # ---------------------------------------------------------
     # 2. ACT
@@ -166,14 +197,18 @@ def test_stix_pipeline_obeys_delta_cache_eviction_and_increments_counters(
     mock_filter_cls.return_value = mock_filter_instance
 
     mock_extractor_instance = MagicMock()
-    mock_extractor_instance.extract_fields.return_value = {"id": "T1000", "mitre_id": "T1000", "semantic_hash": "h1"}
+    mock_extractor_instance.extract_fields.return_value = {
+        "id": "T1000",
+        "mitre_id": "T1000",
+        "semantic_hash": "h1",
+    }
     mock_extractor_cls.return_value = mock_extractor_instance
 
     pipeline = StixPipeline(
         cache_client=mock_infra["redis"],
         embedding_engine=mock_infra["embedding"],
         file_path=mock_file_context,
-        batch_size=50
+        batch_size=50,
     )
 
     # CRITICAL: Mock the private method behavior directly on the instance we are testing.
@@ -216,7 +251,9 @@ def test_filter_extract_stix_object_nominal_flow(
     mock_filter_cls.return_value.is_valid_technique.return_value = True
     mock_extractor_cls.return_value.extract_fields.return_value = expected_extracted
 
-    pipeline = StixPipeline(mock_infra["redis"], mock_infra["embedding"], mock_file_context)
+    pipeline = StixPipeline(
+        mock_infra["redis"], mock_infra["embedding"], mock_file_context
+    )
 
     # Act
     result = pipeline._filter_extract_stix_object(stix_object=raw_object)
@@ -224,7 +261,6 @@ def test_filter_extract_stix_object_nominal_flow(
     assert result == expected_extracted
     mock_filter_cls.assert_called_once_with(stix_object=raw_object)
     mock_extractor_cls.assert_called_once_with(stix_object=raw_object)
-
 
 
 @patch("src.data_pipeline.pipelines.stix_pipeline.StixFilter")
@@ -235,13 +271,22 @@ def test_filter_extract_stix_object_nominal_flow(
         # Case 1: Rejected early by the StixFilter layer -> returns None, no log entry
         (False, None, None),
         # Case 2: Filter passes, but Extractor raises ValueError -> returns None, debug log captured via caplog
-        (True, ValueError("Missing context schema keys"),
-         "Evicting malformed STIX object because: Missing context schema keys")
-    ]
+        (
+                True,
+                ValueError("Missing context schema keys"),
+                "Evicting malformed STIX object because: Missing context schema keys",
+        ),
+    ],
 )
 def test_filter_extract_stix_object_eviction_scenarios(
-        mock_extractor_cls, mock_filter_cls, mock_file_context, mock_infra, caplog,
-        filter_valid, extractor_side_effect, expected_log_msg
+        mock_extractor_cls,
+        mock_filter_cls,
+        mock_file_context,
+        mock_infra,
+        caplog,
+        filter_valid,
+        extractor_side_effect,
+        expected_log_msg,
 ):
     """
     GIVEN various faulty STIX object boundary scenarios (filter rejection or extractor validation failures)
@@ -250,12 +295,16 @@ def test_filter_extract_stix_object_eviction_scenarios(
     """
     # Arrange
     raw_object = {"type": "attack-pattern", "id": "attack-pattern--faulty"}
-    pipeline = StixPipeline(mock_infra["redis"], mock_infra["embedding"], mock_file_context)
+    pipeline = StixPipeline(
+        mock_infra["redis"], mock_infra["embedding"], mock_file_context
+    )
 
     mock_filter_cls.return_value.is_valid_technique.return_value = filter_valid
 
     if extractor_side_effect:
-        mock_extractor_cls.return_value.extract_fields.side_effect = extractor_side_effect
+        mock_extractor_cls.return_value.extract_fields.side_effect = (
+            extractor_side_effect
+        )
     else:
         mock_extractor_cls.return_value.extract_fields.return_value = {}
 
@@ -271,6 +320,7 @@ def test_filter_extract_stix_object_eviction_scenarios(
     else:
         assert len(caplog.records) == 0
 
+
 # ============================================================================
 # TEST PRIVATE SEMANTIC HASH COLLISION
 # ============================================================================
@@ -281,21 +331,21 @@ def test_filter_extract_stix_object_eviction_scenarios(
         (
                 {"T1055": "current_signature_hash"},
                 {"mitre_id": "T1003", "semantic_hash": "some_hash_signature"},
-                True
+                True,
         ),
         # Case 2: Mitre ID exists, but hash signature mutated -> Upsert required (True)
         (
                 {"T1055": "old_signature_hash"},
                 {"mitre_id": "T1055", "semantic_hash": "new_signature_hash"},
-                True
+                True,
         ),
         # Case 3: Mitre ID exists and signature matches perfectly -> Eviction trigger (False)
         (
                 {"T1055": "exact_matching_signature_hash"},
                 {"mitre_id": "T1055", "semantic_hash": "exact_matching_signature_hash"},
-                False
-        )
-    ]
+                False,
+        ),
+    ],
 )
 def test_need_upsert_delta_cache_decision_matrix(
         mock_file_context, mock_infra, remote_hashes, extracted_data, expected_result
@@ -309,7 +359,7 @@ def test_need_upsert_delta_cache_decision_matrix(
     pipeline = StixPipeline(
         cache_client=mock_infra["redis"],
         embedding_engine=mock_infra["embedding"],
-        file_path=mock_file_context
+        file_path=mock_file_context,
     )
 
     # Pre-populate the orchestrator delta state persistence registry
@@ -319,10 +369,13 @@ def test_need_upsert_delta_cache_decision_matrix(
     # Assert
     assert result is expected_result
 
+
 # ============================================================================
 # TEST PIPELINE ERRORS
 # ============================================================================
-def test_stix_pipeline_aborts_early_when_file_not_found(mock_file_context, mock_infra, caplog):
+def test_stix_pipeline_aborts_early_when_file_not_found(
+        mock_file_context, mock_infra, caplog
+):
     """
     GIVEN a missing target STIX bundle file path
     WHEN running the StixPipeline
@@ -334,13 +387,13 @@ def test_stix_pipeline_aborts_early_when_file_not_found(mock_file_context, mock_
     pipeline = StixPipeline(
         cache_client=mock_infra["redis"],
         embedding_engine=mock_infra["embedding"],
-        file_path=mock_file_context
+        file_path=mock_file_context,
     )
 
     # Act
-    with caplog.at_level(logging.ERROR):
-        with pytest.raises(FileNotFoundError) as exc_info:
-            pipeline.run()
+    with (caplog.at_level(logging.ERROR),
+          pytest.raises(FileNotFoundError) as exc_info):
+        pipeline.run()
 
     # Assert
     # 1. Verify the exception payload message matches
@@ -355,7 +408,7 @@ def test_stix_pipeline_aborts_early_when_file_not_found(mock_file_context, mock_
 
 
 def test_stix_pipeline_isolates_and_logs_critical_batch_ingestion_failures(
-    mock_file_context, mock_infra, stix_mock_stream, caplog
+        mock_file_context, mock_infra, stix_mock_stream, caplog
 ):
     """
     GIVEN an operational pipeline that hits a critical database crash during a bulk upsert
@@ -364,20 +417,24 @@ def test_stix_pipeline_isolates_and_logs_critical_batch_ingestion_failures(
          batch range metadata context at ERROR level, and propagates the exception.
     """
     # Arrange: Simulate a database dropout or cluster exception on bulk execution
-    mock_infra["redis"].execute_bulk_upsert.side_effect = RuntimeError("Redis connection timeout lost")
+    mock_infra["redis"].execute_bulk_upsert.side_effect = RuntimeError(
+        "Redis connection timeout lost"
+    )
 
     pipeline = StixPipeline(
         cache_client=mock_infra["redis"],
         embedding_engine=mock_infra["embedding"],
         file_path=mock_file_context,
-        batch_size=50
+        batch_size=50,
     )
 
     # Act & Assert
-    with caplog.at_level(logging.ERROR):
+    with (caplog.at_level(logging.ERROR),
+          patch("builtins.open", mock_open()),
+          pytest.raises(RuntimeError) as exc_info,
+          ):
         # The pipeline must re-raise the batch error to prevent silent data loss corruption
-        with patch("builtins.open", mock_open()), pytest.raises(RuntimeError) as exc_info:
-            pipeline.run()
+        pipeline.run()
 
     assert "Redis connection timeout lost" in str(exc_info.value)
     # Audit the post-mortem telemetry in caplog records

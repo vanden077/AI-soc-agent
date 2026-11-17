@@ -1,6 +1,5 @@
-from pydantic import ValidationError
 import pytest
-
+from pydantic import ValidationError
 from src.api.schemas.log_ingress_payload import AvailablePlatforms, LogIngressPayload
 
 

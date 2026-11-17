@@ -1,8 +1,8 @@
 import logging
 
-from src.soc_agent.schemas import GuardLayerVerdict
 from src.llm.interfaces import ILlmEngine
 from src.soc_agent.prompt_factory import PromptFactory
+from src.soc_agent.schemas import GuardLayerVerdict
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,17 @@ class SocAgent:
         :param raw_log: Raw string dataset or log batch sequence
         :return: Typesafe Pydantic validation schema instance
         """
-        logger.info(f"[SOC AGENT] Single-pass Guard Layer analysis triggered for platform: '{platform}'")
+        logger.info(
+            f"[SOC AGENT] Single-pass Guard Layer analysis triggered for platform: '{platform}'"
+        )
 
         try:
-            prompt = PromptFactory.build_guard_layer_prompt(platform=platform, raw_log=raw_log)
+            prompt = PromptFactory.build_guard_layer_prompt(
+                platform=platform, raw_log=raw_log
+            )
             return self._llm_engine.analyze_event(
-                prompt=prompt,
-                response_schema=GuardLayerVerdict
+                prompt=prompt, response_schema=GuardLayerVerdict
             )
         except Exception as e:
-            logger.error(f"[SOC AGENT] Semantic triage flow collapsed: {str(e)}")
-            raise e
-        
+            logger.error(f"[SOC AGENT] Semantic triage flow collapsed: {e!s}")
+            raise

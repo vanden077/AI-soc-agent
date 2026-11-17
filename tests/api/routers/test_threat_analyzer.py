@@ -3,8 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
-import pytest
-
 from src.api.schemas import AvailablePlatforms
 from src.soc_agent.schemas import MitreTechnique, ThreatAnalysis
 
@@ -37,8 +35,12 @@ def test_ingest_and_process_log_nominal_returns_200_and_threat_analysis(
             ],
         )
 
-        mock_service_cls = mocker.patch("src.api.routers.threat_analyzer.ForensicService")
-        mock_service_cls.return_value.analyze_and_report = AsyncMock(return_value=expected_report)
+        mock_service_cls = mocker.patch(
+            "src.api.routers.threat_analyzer.ForensicService"
+        )
+        mock_service_cls.return_value.analyze_and_report = AsyncMock(
+            return_value=expected_report
+        )
 
         response = mock_client.post(
             "/threat_analyzer",
@@ -59,7 +61,10 @@ def test_ingest_and_process_log_nominal_returns_200_and_threat_analysis(
             raw_log="EventID=10 TargetImage=lsass.exe",
         )
         assert response.json() == expected_report.model_dump(mode="json")
-        assert "[THREAT ROUTER] Received ingress log request for platform: 'windows'" in caplog.text
+        assert (
+            "[THREAT ROUTER] Received ingress log request for platform: 'windows'"
+            in caplog.text
+        )
 
 
 def test_ingest_and_process_log_propagates_500_when_forensic_service_fails(

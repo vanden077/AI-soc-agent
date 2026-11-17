@@ -1,10 +1,13 @@
+from typing import ClassVar
+
+
 class ThreatCatalog:
     """
     Registry holding cyber detection guidelines mapped to MITRE ATT&CK Enterprise v19.2 platforms.
     Embeds canonical MITRE taxonomy terms to anchor downstream vector similarity search.
     """
 
-    _GUIDELINES: dict[str, str] = {
+    _GUIDELINES: ClassVar[dict[str, str]] = {
         "windows": (
             "Focus on MITRE mechanisms: Command and Scripting Interpreter (PowerShell, CMD, WMI, Mshta), "
             "Process Injection, OS Credential Dumping (LSASS), Registry Run Keys persistence, "

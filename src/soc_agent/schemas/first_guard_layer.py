@@ -8,6 +8,7 @@ class GuardLayerVerdict(BaseModel):
     Omitting 'semantic_summary' when is_threat is False saves CPU tokens
     and automatically resolves to the default nominal baseline.
     """
+
     is_threat: bool = Field(
         description=(
             "True ONLY if the raw log exhibits critical security state mutations, "
@@ -18,7 +19,7 @@ class GuardLayerVerdict(BaseModel):
     confidence_score: float = Field(
         description="Mathematical certainty strictly bounded between 0.0 and 1.0 based on behavioral evidence completeness.",
         ge=0.0,
-        le=1.0
+        le=1.0,
     )
     semantic_summary: str | None = Field(
         default=None,
@@ -27,5 +28,5 @@ class GuardLayerVerdict(BaseModel):
             "If is_threat is true, write ONE high-density technical sentence (25-40 words, max 280 chars) "
             "stating the attack mechanism, targeted artifact, and adversarial objective for vector similarity search."
         ),
-        max_length=280
+        max_length=280,
     )

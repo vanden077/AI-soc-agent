@@ -1,16 +1,21 @@
 import logging
-
-from typing import Any, TypeVar, Sequence, Type, Optional
+from collections.abc import Sequence
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 from redisvl.query import VectorQuery
 from redisvl.query.filter import FilterExpression, Tag
 
-from src.persistence.interfaces.i_vector_search_engine import IVectorSearchEngine
+from src.persistence.engine.redis.client.vector.exceptions import (
+    VectorDimensionMismatchError,
+)
 from src.persistence.engine.redis.driver.redis_driver import RedisDriver
 from src.persistence.engine.redis.driver.vector_fields_specs import VectorFieldSpecs
-from src.persistence.engine.redis.client.vector.exceptions import VectorDimensionMismatchError
-from src.persistence.engine.redis.geometric_guards import is_distance_valid, clamp_distance_result
+from src.persistence.engine.redis.geometric_guards import (
+    clamp_distance_result,
+    is_distance_valid,
+)
+from src.persistence.interfaces.i_vector_search_engine import IVectorSearchEngine
 
 logger = logging.getLogger(__name__)
 
@@ -20,15 +25,11 @@ T = TypeVar("T", bound=BaseModel)
 class VectorCacheClient(IVectorSearchEngine):
     """Agnostic vector search engine client.
 
-    Consumes a direct single-source-of-truth O(1) schema map supplied natively by the parent 
+    Consumes a direct single-source-of-truth O(1) schema map supplied natively by the parent
     driver, achieving absolute zero-overhead metadata management during lifespan hooks.
     """
 
-    def __init__(
-            self,
-            driver: RedisDriver,
-            index_path: str
-    ) -> None:
+    def __init__(self, driver: RedisDriver, index_path: str) -> None:
         self._driver = driver
         self._index_path = index_path
         # will contain all vectors available
@@ -42,13 +43,13 @@ class VectorCacheClient(IVectorSearchEngine):
         self._catalog = self._driver.get_index_vector_fields_catalog()
         self._metadata_fields = self._driver.get_index_metadata_fields()
 
-    def similarity_search(
+    def similarity_search[T: BaseModel](
             self,
             query_vector: list[float],
-            response_model: Type[T],
-            vector_field: Optional[str] = None,
-            filter_expression: Optional[dict[str, str]] = None,
-            limit: int = 5
+            response_model: type[T],
+            vector_field: str | None = None,
+            filter_expression: dict[str, str] | None = None,
+            limit: int = 5,
     ) -> list[T]:
         """Performs a linear, hybrid semantic similarity search starting from raw text.
 
@@ -99,15 +100,16 @@ class VectorCacheClient(IVectorSearchEngine):
             vector_field_name=vector_name,
             return_fields=fields_to_return,
             num_results=limit,
-            filter_expression=self._build_tag_filter(metadata_tags=filter_expression)
+            filter_expression=self._build_tag_filter(metadata_tags=filter_expression),
         )
         results = self._driver.search_index.query(query)
-        logger.info(f"[VECTOR CACHE RAW] type={type(results)} | payload={results}")
 
         # 5. Parse and clean results by binding the resolved field configuration
-        return self._parse_and_clean_results(results=results, response_model=response_model, vector_name=vector_name)
+        return self._parse_and_clean_results(
+            results=results, response_model=response_model, vector_name=vector_name
+        )
 
-    def _validate_and_resolve_vector_field(self, vector_field: Optional[str]) -> str:
+    def _validate_and_resolve_vector_field(self, vector_field: str | None) -> str:
         """Enforces runtime validation rules on the requested vector field.
 
         Ensures full geometric safety by rejecting ambiguities and missing fields
@@ -133,14 +135,15 @@ class VectorCacheClient(IVectorSearchEngine):
 
         return vector_field
 
-    def _resolve_return_fields(self, response_model: Type[BaseModel]) -> list[str]:
+    def _resolve_return_fields(self, response_model: type[BaseModel]) -> list[str]:
         """Resolves the exact subset of metadata fields to fetch from Redis based on the target schema.
 
         Prevents fetching unrequested fields or heavy vector tensors over the network,
         and fails fast if the target Pydantic schema has zero overlap with the index metadata.
         """
         fields_to_return = [
-            field_name for field_name in response_model.model_fields
+            field_name
+            for field_name in response_model.model_fields
             if field_name in self._metadata_fields
         ]
 
@@ -152,7 +155,12 @@ class VectorCacheClient(IVectorSearchEngine):
 
         return fields_to_return
 
-    def _parse_and_clean_results(self, results: Sequence[dict[str, Any]], response_model: Type[T], vector_name: str) -> list[T]:
+    def _parse_and_clean_results(
+            self,
+            results: Sequence[dict[str, Any]],
+            response_model: type[T],
+            vector_name: str,
+    ) -> list[T]:
         """Filters tensor data, strips database technicalities, and computes a universal normalized similarity.
 
         Strict EAFP implementation. Any schema mismatch or database corruption triggers an immediate failure.
@@ -198,7 +206,9 @@ class VectorCacheClient(IVectorSearchEngine):
         self._driver.close()
 
     @staticmethod
-    def _build_tag_filter(metadata_tags: Optional[dict[str, str]]) -> Optional[FilterExpression]:
+    def _build_tag_filter(
+            metadata_tags: dict[str, str] | None,
+    ) -> FilterExpression | None:
         """
         Translates an agnostic key-value dictionary into a RedisVL FilterExpression.
         Keeps RedisVL filtering mechanics strictly isolated within the infrastructure layer.
@@ -211,10 +221,12 @@ class VectorCacheClient(IVectorSearchEngine):
         # FilterExpression AST nodes instead of returning a boolean. This non-standard DSL
         # confuses static type checkers and is a prime candidate for breaking API changes
         # in future RedisVL releases. Isolated here to protect the domain layer.
-        combined_filter: Optional[FilterExpression] = None
+        combined_filter: FilterExpression | None = None
         for field, value in metadata_tags.items():
             clause: FilterExpression = Tag(field) == value  # type: ignore[assignment]
-            combined_filter = clause if combined_filter is None else (combined_filter & clause)
+            combined_filter = (
+                clause if combined_filter is None else (combined_filter & clause)
+            )
 
         return combined_filter
 

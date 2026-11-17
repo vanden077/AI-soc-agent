@@ -1,5 +1,6 @@
 from src.soc_agent.threat_catalog import ThreatCatalog
 
+
 class PromptFactory:
     """
     Pure functional builder for structuring AI Agent prompts in native English.
@@ -37,4 +38,7 @@ class PromptFactory:
             f"- Platform Detection Guidelines: {specific_guideline}"
         )
 
-        return [("system", system_instruction), ("user", f"Raw Security Log:\n{raw_log}")]
+        return [
+            ("system", system_instruction),
+            ("user", f"Raw Security Log:\n{raw_log}"),
+        ]

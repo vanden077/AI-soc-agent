@@ -1,24 +1,25 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Type, Generic
 
 from pydantic import BaseModel
 
-T = TypeVar("T", bound=BaseModel)
-_TLLMEngine = TypeVar("_TLLMEngine", covariant=True)
 
-class ILlmEngine(ABC, Generic[_TLLMEngine]):
+class ILlmEngine[TLLMEngine](ABC):
     """Common interface for all llm engines."""
 
     @abstractmethod
-    def __init__(self, base_url: str, model_name: str, temperature: float = 0.0) -> None:
+    def __init__(
+            self, base_url: str, model_name: str, temperature: float = 0.0
+    ) -> None:
         """Initialize the LLM engine with standard connection and inference parameters."""
 
     @abstractmethod
-    def _init_llm(self) -> _TLLMEngine:
+    def _init_llm(self) -> TLLMEngine:
         """initialization method to allow clean mocking boundaries for structured output."""
 
     @abstractmethod
-    def analyze_event(self, prompt: list[tuple[str, str]], response_schema: Type[T]) -> T:
+    def analyze_event[T: BaseModel](
+            self, prompt: list[tuple[str, str]], response_schema: type[T]
+    ) -> T:
         """
         Generate a structured response based on any arbitrary Pydantic schema.
 

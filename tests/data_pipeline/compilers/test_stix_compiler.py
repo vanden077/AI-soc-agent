@@ -16,23 +16,23 @@ def test_stix_compiler_nominal_full_compilation():
         "platforms": ["Windows"],
         "mutable_elements": [
             {"field": "process", "description": "lsass.exe execution spikes"},
-            {"field": "registry", "description": "SAM hive exfiltration tracks"}
-        ]
+            {"field": "registry", "description": "SAM hive exfiltration tracks"},
+        ],
     }
 
     compiler = StixCompiler(extracted_data=rich_data)
     result = compiler.compile_fields()
 
     # check generic id is added
-    assert result["id"] == rich_data['mitre_id']
+    assert result["id"] == rich_data["mitre_id"]
     # check dict is not altered during compilation
-    assert result["mitre_id"] == rich_data['mitre_id']
-    assert result["technic_name"] == rich_data['technic_name']
-    assert result["description"] == rich_data['description']
-    assert result["parent_id"] == rich_data['parent_id']
-    assert result["tactics"] == rich_data['tactics']
-    assert result["platforms"] == rich_data['platforms']
-    assert result["mutable_elements"] == rich_data['mutable_elements']
+    assert result["mitre_id"] == rich_data["mitre_id"]
+    assert result["technic_name"] == rich_data["technic_name"]
+    assert result["description"] == rich_data["description"]
+    assert result["parent_id"] == rich_data["parent_id"]
+    assert result["tactics"] == rich_data["tactics"]
+    assert result["platforms"] == rich_data["platforms"]
+    assert result["mutable_elements"] == rich_data["mutable_elements"]
     # check compiled text
     expected_text = (
         "Technique ID: T1003.001\n"
@@ -59,7 +59,7 @@ def test_stix_compiler_robustness_with_empty_or_missing_fields():
         "description": "Adversaries may dump credentials.",
         "parent_id": "",
         "tactics": [],  # Empty boundary
-        "platforms": None  # None type boundary
+        "platforms": None,  # None type boundary
         # "mutable_elements" is completely missing to test dictionary fallback
     }
     original_data = dirty_data.copy()

@@ -3,7 +3,6 @@ import os
 
 import pytest
 from pydantic import BaseModel, ValidationError
-
 from src.startup.env_vars import load_env_vars
 
 
@@ -31,6 +30,7 @@ def test_load_env_vars_logs_and_reraises_validation_error(
 ) -> None:
     """Error: logs structured error_details dictionary and re-raises ValidationError."""
     with caplog.at_level(logging.ERROR):
+
         class _DummySchema(BaseModel):
             REQUIRED_VAR: int
 
@@ -43,5 +43,8 @@ def test_load_env_vars_logs_and_reraises_validation_error(
         with pytest.raises(ValidationError):
             load_env_vars()
 
-        assert "[ENV VARS STARTUP] Environment variables loading failed because:" in caplog.text
+        assert (
+            "[ENV VARS STARTUP] Environment variables loading failed because:"
+            in caplog.text
+        )
         assert "REQUIRED_VAR" in caplog.text

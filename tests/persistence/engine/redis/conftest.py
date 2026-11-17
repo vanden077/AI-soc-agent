@@ -1,11 +1,11 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from fakeredis import FakeRedis, FakeServer
 from redisvl.index import SearchIndex
 from redisvl.schema import IndexSchema
-
 from src.persistence.engine.redis.driver.redis_driver import RedisDriver
 
 
@@ -38,6 +38,7 @@ def redis_driver_factory() -> Callable[..., RedisDriver]:
     Factory fixture providing a clean, lazy-loaded concrete RedisDriver instance.
     Allows tests to control the exact timing of instantiation.
     """
+
     def _create_driver(**kwargs: Any) -> RedisDriver:
         default_params: dict[str, Any] = {
             "host": "test",

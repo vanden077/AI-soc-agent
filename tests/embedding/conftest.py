@@ -1,8 +1,7 @@
-from typing import Any, Type
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 
 
@@ -36,6 +35,6 @@ class DummyEmbeddingEngine(IEmbeddingEngine[MagicMock]):
 
 
 @pytest.fixture
-def dummy_embedding_engine_cls() -> Type[DummyEmbeddingEngine]:
+def dummy_embedding_engine_cls() -> type[DummyEmbeddingEngine]:
     """Expose the backend-agnostic IEmbeddingEngine implementation class."""
     return DummyEmbeddingEngine

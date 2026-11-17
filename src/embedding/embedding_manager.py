@@ -1,5 +1,5 @@
 import importlib
-from typing import Any, ClassVar, Type
+from typing import Any, ClassVar
 
 from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 from src.embedding.providers.embedding_provider import EmbeddingProvider
@@ -9,6 +9,7 @@ class EmbeddingManager:
     """
     Factory pattern for embedding engines using lazy dynamic resolution.
     """
+
     _ENGINE_REGISTRY: ClassVar[dict[EmbeddingProvider, str]] = {
         EmbeddingProvider.HUGGINGFACE: "src.embedding.engine.huggingface.huggingface_engine.HuggingFaceEngine",
     }
@@ -30,13 +31,15 @@ class EmbeddingManager:
 
         engine_path = self._ENGINE_REGISTRY.get(provider_enum)
         if engine_path is None:
-            raise NotImplementedError(f"Engine '{provider_enum}' is listed but not yet implemented.")
+            raise NotImplementedError(
+                f"Engine '{provider_enum}' is listed but not yet implemented."
+            )
 
         engine_cls = self._load_engine_class(engine_path)
         self._engine = engine_cls(model_name=self._model_name)
 
     @staticmethod
-    def _load_engine_class(dotted_path: str) -> Type[IEmbeddingEngine[Any]]:
+    def _load_engine_class(dotted_path: str) -> type[IEmbeddingEngine[Any]]:
         """Dynamically import an engine class from its dotted module path."""
         module_path, class_name = dotted_path.rsplit(".", 1)
         module = importlib.import_module(module_path)

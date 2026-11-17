@@ -1,17 +1,16 @@
 from types import SimpleNamespace
-from typing import Type
 
 import pytest
-
 from src.embedding.embedding_manager import EmbeddingManager
 from src.embedding.interfaces.i_embedding_engine import IEmbeddingEngine
 from src.embedding.providers.embedding_provider import EmbeddingProvider
+
 from tests.embedding.conftest import DummyEmbeddingEngine
 
 
 def test_init_resolves_registered_provider_and_exposes_engine(
     mocker,
-    dummy_embedding_engine_cls: Type[DummyEmbeddingEngine],
+    dummy_embedding_engine_cls: type[DummyEmbeddingEngine],
 ) -> None:
     """Nominal: resolves a valid provider from _ENGINE_REGISTRY and instantiates its engine."""
     mocker.patch.dict(

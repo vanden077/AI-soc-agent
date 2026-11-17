@@ -2,7 +2,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.persistence.interfaces.i_json_storage_engine import IJsonStorageEngine
 from src.persistence.interfaces.i_persistence_factory import IPersistenceFactory
 from src.persistence.interfaces.i_vector_ingestion_engine import IVectorIngestionEngine
@@ -40,7 +39,9 @@ def test_init_resolves_registered_provider_and_instantiates_factory(
 
 def test_init_raises_value_error_on_unsupported_provider() -> None:
     """Error: unknown provider string raises ValueError listing available providers."""
-    with pytest.raises(ValueError, match="Persistence provider 'unknown_db' not supported"):
+    with pytest.raises(
+        ValueError, match="Persistence provider 'unknown_db' not supported"
+    ):
         PersistenceManager(provider="unknown_db")
 
 

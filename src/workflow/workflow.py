@@ -1,14 +1,14 @@
 import logging
 
-from src.embedding.interfaces import IEmbeddingEngine
-from src.persistence.interfaces import IVectorSearchEngine
-from src.soc_agent.schemas import MitreTechnique, ThreatAnalysis
-from src.soc_agent.schemas import GuardLayerVerdict
 from src.api.schemas import AvailablePlatforms
+from src.embedding.interfaces import IEmbeddingEngine
 from src.llm.interfaces import ILlmEngine
+from src.persistence.interfaces import IVectorSearchEngine
 from src.soc_agent.agent import SocAgent
+from src.soc_agent.schemas import GuardLayerVerdict, MitreTechnique, ThreatAnalysis
 
 logger = logging.getLogger(__name__)
+
 
 class SocAgentWorkflow:
     """
@@ -33,7 +33,9 @@ class SocAgentWorkflow:
         self._min_similarity = min_similarity
         self._similarity_delta = similarity_delta
 
-    async def execute(self, platform: AvailablePlatforms, raw_log: str) -> ThreatAnalysis:
+    async def execute(
+        self, platform: AvailablePlatforms, raw_log: str
+    ) -> ThreatAnalysis:
         """
         Executes the full forensic pipeline:
         - Step 1: Qualify raw log via Guard Layer LLM inference.
@@ -43,7 +45,9 @@ class SocAgentWorkflow:
         verdict = self._qualify_raw_log(platform=platform, raw_log=raw_log)
 
         if not verdict.is_threat or not verdict.semantic_summary:
-            logger.info(f"[AGENT WORKFLOW] Benign activity confirmed for '{platform.value}'. Skipping KNN.")
+            logger.info(
+                f"[AGENT WORKFLOW] Benign activity confirmed for '{platform.value}'. Skipping KNN."
+            )
             return ThreatAnalysis(
                 platform=platform,
                 is_threat=False,
@@ -66,9 +70,13 @@ class SocAgentWorkflow:
             matched_techniques=matched_techniques,
         )
 
-    def _qualify_raw_log(self, platform: AvailablePlatforms, raw_log: str) -> GuardLayerVerdict:
+    def _qualify_raw_log(
+        self, platform: AvailablePlatforms, raw_log: str
+    ) -> GuardLayerVerdict:
         """Step 1: Ask LLM to determine if there is a threat and extract semantic signature."""
-        logger.info(f"[AGENT WORKFLOW] Initiating Guard Layer triage for platform: '{platform.value}'")
+        logger.info(
+            f"[AGENT WORKFLOW] Initiating Guard Layer triage for platform: '{platform.value}'"
+        )
         return self._agent.analyze_ingress_flow(
             platform=platform.value,
             raw_log=raw_log,
@@ -80,7 +88,9 @@ class SocAgentWorkflow:
         semantic_summary: str,
     ) -> list[MitreTechnique]:
         """Step 2: Execute platform-filtered KNN search and keep closely clustered top matches."""
-        logger.info(f"[AGENT WORKFLOW] Running KNN MITRE lookup for platform: '{platform.value}'")
+        logger.info(
+            f"[AGENT WORKFLOW] Running KNN MITRE lookup for platform: '{platform.value}'"
+        )
 
         query_vector = self._embedding_engine.embed_query(text=semantic_summary)
 
@@ -93,7 +103,9 @@ class SocAgentWorkflow:
 
         return self._filter_close_matches(raw_matches)
 
-    def _filter_close_matches(self, matches: list[MitreTechnique]) -> list[MitreTechnique]:
+    def _filter_close_matches(
+        self, matches: list[MitreTechnique]
+    ) -> list[MitreTechnique]:
         """
         Retains the top candidate (if above min_similarity) and any subsequent candidates
         whose normalized similarity remains within `similarity_delta` of the best score.

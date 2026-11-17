@@ -2,7 +2,6 @@ import logging
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine
 from src.startup.embedding import init_embedding_engine
