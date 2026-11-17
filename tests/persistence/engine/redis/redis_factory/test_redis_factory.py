@@ -2,6 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 from src.persistence.engine.redis.client.json.json_cache_client import JsonCacheClient
+from src.persistence.engine.redis.client.queue.redis_queue_client import (
+    RedisQueueClient,
+)
 from src.persistence.engine.redis.client.vector.ingestion_cache_client import (
     IngestionCacheClient,
 )
@@ -15,7 +18,7 @@ from src.persistence.engine.redis.redis_factory.redis_factory import (
 
 
 def test_create_json_engine_initializes_resp3_client(
-    mocker, redis_driver_factory
+        mocker, redis_driver_factory
 ) -> None:
     """Nominal: instantiates JsonCacheClient with an initialized RESP3 driver (vector_capability=False)."""
     mocker.patch(
@@ -32,7 +35,7 @@ def test_create_json_engine_initializes_resp3_client(
 
 
 def test_create_vector_search_engine_nominal(
-    mocker, redis_driver_factory, mock_redis_vl_search_index: MagicMock
+        mocker, redis_driver_factory, mock_redis_vl_search_index: MagicMock
 ) -> None:
     """Nominal: instantiates VectorCacheClient with RESP2 driver and synchronizes lifespan catalog."""
     mocker.patch(
@@ -56,7 +59,7 @@ def test_create_vector_search_engine_nominal(
 
 
 def test_create_vector_search_engine_closes_driver_on_catalog_failure(
-    mocker, redis_driver_factory, mock_redis_vl_search_index: MagicMock
+        mocker, redis_driver_factory, mock_redis_vl_search_index: MagicMock
 ) -> None:
     """Rollback: closes driver connection pool and re-raises if catalog synchronization fails."""
     mocker.patch(
@@ -83,7 +86,7 @@ def test_create_vector_search_engine_closes_driver_on_catalog_failure(
 
 
 def test_create_vector_ingestion_engine_nominal(
-    mocker, redis_driver_factory, mock_redis_vl_search_index: MagicMock
+        mocker, redis_driver_factory, mock_redis_vl_search_index: MagicMock
 ) -> None:
     """Nominal: instantiates IngestionCacheClient with RESP2 driver and initializes search index."""
     mocker.patch(
@@ -109,7 +112,7 @@ def test_create_vector_ingestion_engine_nominal(
 
 
 def test_create_vector_ingestion_engine_closes_driver_on_index_init_failure(
-    mocker, redis_driver_factory, mock_redis_vl_search_index: MagicMock
+        mocker, redis_driver_factory, mock_redis_vl_search_index: MagicMock
 ) -> None:
     """Rollback: closes driver connection pool and re-raises if search index creation fails."""
     mocker.patch(
@@ -134,3 +137,30 @@ def test_create_vector_ingestion_engine_closes_driver_on_index_init_failure(
         )
 
     spy_close.assert_called_once()
+
+
+def test_create_queue_engine_initializes_resp3_client(
+        mocker, redis_driver_factory
+) -> None:
+    """Nominal: instantiates RedisQueueClient with an initialized RESP3 driver (vector_capability=False)."""
+    mocker.patch(
+        "src.persistence.engine.redis.redis_factory.redis_factory.RedisDriver",
+        side_effect=redis_driver_factory,
+    )
+    factory = RedisPersistenceFactory()
+
+    client = factory.create_queue_engine(
+        pending_key="soc:queue:pending",
+        done_key="soc:queue:done",
+        max_done_history=50,
+        db=0,
+        decode_responses=True,
+        ssl=False,
+    )
+
+    assert isinstance(client, RedisQueueClient)
+    assert client._driver._vector_capability is False
+    assert client._driver._client is not None
+    assert client._pending_key == "soc:queue:pending"
+    assert client._done_key == "soc:queue:done"
+    assert client._max_done_history == 50

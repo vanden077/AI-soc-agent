@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -8,15 +9,21 @@ from src.api.routers import health_route, threat_analyzer
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine
 from src.llm.interfaces import ILlmEngine
-from src.persistence.interfaces import IJsonStorageEngine, IVectorSearchEngine
+from src.persistence.interfaces import (
+    IJsonStorageEngine,
+    IQueueEngine,
+    IVectorSearchEngine,
+)
 from src.startup import (
     download_stix_file,
     init_embedding_engine,
     init_json_pool,
     init_llm,
+    init_queue_pool,
     init_vector_pool,
     load_env_vars,
     run_pipeline,
+    start_analysis_worker,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)-7s:  %(message)s")
@@ -70,6 +77,8 @@ async def lifespan(ai_soc_agent: FastAPI):
 
     json_cache = None
     vector_cache = None
+    queue_cache = None
+    worker_task = None
 
     try:
         # ==============================================================================
@@ -77,11 +86,24 @@ async def lifespan(ai_soc_agent: FastAPI):
         # ==============================================================================
         json_cache: IJsonStorageEngine = init_json_pool(settings=settings)
         vector_cache: IVectorSearchEngine = init_vector_pool(settings=settings)
+        queue_cache: IQueueEngine = init_queue_pool(settings=settings)
 
         # ==============================================================================
         # PHASE 6: Initialize LLM engine, and push its instance into context
         # ==============================================================================
         llm_engine: ILlmEngine = init_llm(settings=settings)
+
+        # ==============================================================================
+        # PHASE 7: Start background forensic analysis worker
+        # ==============================================================================
+        worker_task = start_analysis_worker(
+            settings=settings,
+            json_engine=json_cache,
+            queue_engine=queue_cache,
+            llm_engine=llm_engine,
+            embedding_engine=embedding_engine,
+            vector_engine=vector_cache,
+        )
 
         logger.info("🚀 STARTUP COMPLETE")
 
@@ -92,14 +114,22 @@ async def lifespan(ai_soc_agent: FastAPI):
             "llm_engine": llm_engine,
             "json_cache": json_cache,
             "vector_cache": vector_cache,
+            "queue_cache": queue_cache,
         }
     finally:
+        # Gracefully stop background task
+        if worker_task is not None:
+            worker_task.cancel()
+            await asyncio.gather(worker_task, return_exceptions=True)
         # Gracefully release json persistence connexions pool
         if json_cache is not None:
             json_cache.close()
         # Gracefully release vector persistence connexions pool
         if vector_cache is not None:
             vector_cache.close()
+        # Gracefully release queue connexions pool
+        if queue_cache is not None:
+            queue_cache.close()
 
     logger.info("👋 Gracefully closed app... Bye")
 

@@ -21,7 +21,7 @@ class Settings(BaseModel):
     MITRE_RELEASE_TAG: str = Field(
         default="19.2",
         description="Immutable STIX matrix (v19.2.0) from the official MITRE repository. "
-        "Guarantees idempotency, reproducibility, and guards against upstream breaking changes.",
+                    "Guarantees idempotency, reproducibility, and guards against upstream breaking changes.",
     )
     PERSISTENCE_ENGINE: str = Field(
         description="Persistence engine to use, ex: redis, qdrant etc..."
@@ -61,6 +61,15 @@ class Settings(BaseModel):
     REDIS_VECTOR_POOL_DB_ID: int = Field(
         description="Index of the Redis database storing VECTOR documents (only because it is a POC, in production everything should be split)."
     )
+    REDIS_QUEUE_PENDING_KEY: str = Field(default="soc:queue:pending", description="Queue pending key name.")
+    REDIS_QUEUE_DONE_KEY: str = Field(default="soc:queue:done", description="Queue done key name.")
+    REDIS_QUEUE_MAX_PENDING_SIZE: int = Field(default=50, ge=1,
+                                              description="Max queue pending size, for throttling/anti DoS.")
+    REDIS_QUEUE_MAX_DONE_HISTORY: int = Field(default=100, ge=1,
+                                              description="Max queue done history size, to prevent RAM explosion on small systems.")
+    REDIS_JOBS_TTL: int = Field(default=3600, description="Global TTL for Redis retention in seconds.")
+    WORKER_POLL_INTERVAL: float = Field(default=0.5,
+                                        description="Poll interval in seconds for worker polling jobs from Redis.")
     EMBEDDING_ENGINE: str = Field(
         description="Embedding engine to use, ex: huggingface, openai etc..."
     )

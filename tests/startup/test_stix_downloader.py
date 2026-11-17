@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from src.constants import Settings
 from src.startup import download_stix_file
 

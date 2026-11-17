@@ -2,7 +2,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel
-
 from src.llm.interfaces.i_llm_engine import ILlmEngine
 
 

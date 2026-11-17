@@ -12,9 +12,10 @@ async def health_check(request: Request) -> JSONResponse:
     """If all components are OK return 200 else 503."""
     json_cache = request.state.json_cache
     vector_cache = request.state.vector_cache
+    queue_cache = request.state.queue_cache
     status_code = 503
 
-    if json_cache.health() and vector_cache.health():
+    if json_cache.health() and vector_cache.health() and queue_cache.health():
         status_code = 200
 
     return JSONResponse(

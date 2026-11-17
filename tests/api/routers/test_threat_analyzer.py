@@ -1,46 +1,37 @@
 import logging
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
-from src.api.schemas import AvailablePlatforms
-from src.soc_agent.schemas import MitreTechnique, ThreatAnalysis
+from src.api.schemas import (
+    AnalysisQueuedResponse,
+    AvailablePlatforms,
+    JobStatus,
+    LogIngressPayload,
+)
+from src.constants import Settings
 
 
-def test_ingest_and_process_log_nominal_returns_200_and_threat_analysis(
-    mocker,
-    mock_client: TestClient,
-    mock_llm_engine: MagicMock,
-    mock_embedding_engine: MagicMock,
-    mock_vector_cache: MagicMock,
-    caplog,
+def test_ingest_and_process_log_nominal_returns_202_and_queued_response(
+        mocker,
+        mock_client: TestClient,
+        mock_settings: Settings,
+        mock_json_cache: MagicMock,
+        mock_queue_cache: MagicMock,
+        caplog,
 ) -> None:
-    """Nominal: extracts engines from request.state, normalizes platform, and returns ThreatAnalysis."""
+    """Nominal: extracts engines/settings from request.state, normalizes platform, and returns 202 Accepted."""
     with caplog.at_level(logging.INFO):
-        expected_report = ThreatAnalysis(
-            platform=AvailablePlatforms.WINDOWS,
-            is_threat=True,
-            confidence_score=0.94,
-            semantic_summary="Suspicious PowerShell execution attempting LSASS memory access.",
-            matched_techniques=[
-                MitreTechnique(
-                    mitre_id="T1003.001",
-                    parent_id="T1003",
-                    technic_name="LSASS Memory",
-                    tactics="Credential Access",
-                    description="Adversaries may attempt to access credential material stored in LSASS.",
-                    platforms="windows",
-                    normalized_similarity=0.91,
-                )
-            ],
+        expected_response = AnalysisQueuedResponse(
+            job_id="123e4567-e89b-12d3-a456-426614174000",
+            status=JobStatus.PENDING,
+            queue_size=1,
         )
 
         mock_service_cls = mocker.patch(
-            "src.api.routers.threat_analyzer.ForensicService"
+            "src.api.routers.threat_analyzer.AnalysisQueueService"
         )
-        mock_service_cls.return_value.analyze_and_report = AsyncMock(
-            return_value=expected_report
-        )
+        mock_service_cls.return_value.submit_log.return_value = expected_response
 
         response = mock_client.post(
             "/threat_analyzer",
@@ -50,31 +41,60 @@ def test_ingest_and_process_log_nominal_returns_200_and_threat_analysis(
             },
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_202_ACCEPTED
         mock_service_cls.assert_called_once_with(
-            llm_engine=mock_llm_engine,
-            embedding_engine=mock_embedding_engine,
-            vector_engine=mock_vector_cache,
+            json_engine=mock_json_cache,
+            queue_engine=mock_queue_cache,
+            max_pending_size=mock_settings.REDIS_QUEUE_MAX_PENDING_SIZE,
+            job_ttl=mock_settings.REDIS_JOBS_TTL,
         )
-        mock_service_cls.return_value.analyze_and_report.assert_awaited_once_with(
-            platform=AvailablePlatforms.WINDOWS,
-            raw_log="EventID=10 TargetImage=lsass.exe",
+        mock_service_cls.return_value.submit_log.assert_called_once_with(
+            payload=LogIngressPayload(
+                platform=AvailablePlatforms.WINDOWS,
+                raw_log="EventID=10 TargetImage=lsass.exe",
+            )
         )
-        assert response.json() == expected_report.model_dump(mode="json")
+        assert response.json() == expected_response.model_dump(mode="json")
         assert (
-            "[THREAT ROUTER] Received ingress log request for platform: 'windows'"
-            in caplog.text
+                "[THREAT ROUTER] Received ingress log request for platform: 'windows'"
+                in caplog.text
         )
 
 
-def test_ingest_and_process_log_propagates_500_when_forensic_service_fails(
-    mocker,
-    mock_client: TestClient,
+def test_ingest_and_process_log_propagates_429_when_queue_is_full(
+        mocker,
+        mock_client: TestClient,
 ) -> None:
-    """Error propagation: returns HTTP 500 when ForensicService raises HTTPException."""
-    mock_service_cls = mocker.patch("src.api.routers.threat_analyzer.ForensicService")
-    mock_service_cls.return_value.analyze_and_report = AsyncMock(
-        side_effect=HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    """Backpressure: returns HTTP 429 when AnalysisQueueService rejects due to full queue."""
+    mock_service_cls = mocker.patch(
+        "src.api.routers.threat_analyzer.AnalysisQueueService"
+    )
+    mock_service_cls.return_value.submit_log.side_effect = HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail="Analysis queue capacity reached. Please retry later.",
+    )
+
+    response = mock_client.post(
+        "/threat_analyzer",
+        json={
+            "platform": "linux",
+            "raw_log": "sudo cat /etc/shadow",
+        },
+    )
+
+    assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
+
+def test_ingest_and_process_log_propagates_500_when_queue_service_fails(
+        mocker,
+        mock_client: TestClient,
+) -> None:
+    """Error propagation: returns HTTP 500 when AnalysisQueueService raises HTTPException."""
+    mock_service_cls = mocker.patch(
+        "src.api.routers.threat_analyzer.AnalysisQueueService"
+    )
+    mock_service_cls.return_value.submit_log.side_effect = HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
 
     response = mock_client.post(
@@ -89,7 +109,7 @@ def test_ingest_and_process_log_propagates_500_when_forensic_service_fails(
 
 
 def test_ingest_and_process_log_returns_422_on_invalid_payload(
-    mock_client: TestClient,
+        mock_client: TestClient,
 ) -> None:
     """Validation boundary: rejects unknown platform with HTTP 422 Unprocessable Entity."""
     response = mock_client.post(

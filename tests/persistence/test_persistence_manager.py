@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from src.persistence.interfaces.i_json_storage_engine import IJsonStorageEngine
 from src.persistence.interfaces.i_persistence_factory import IPersistenceFactory
+from src.persistence.interfaces.i_queue_engine import IQueueEngine
 from src.persistence.interfaces.i_vector_ingestion_engine import IVectorIngestionEngine
 from src.persistence.interfaces.i_vector_search_engine import IVectorSearchEngine
 from src.persistence.persistence_manager import PersistenceManager
@@ -29,7 +30,7 @@ def mock_factory(mocker) -> MagicMock:
 
 
 def test_init_resolves_registered_provider_and_instantiates_factory(
-    mock_factory: MagicMock,
+        mock_factory: MagicMock,
 ) -> None:
     """Nominal: resolves a valid provider from _FACTORY_REGISTRY via importlib."""
     manager = PersistenceManager(provider=PersistenceProvider.REDIS.value)
@@ -40,7 +41,7 @@ def test_init_resolves_registered_provider_and_instantiates_factory(
 def test_init_raises_value_error_on_unsupported_provider() -> None:
     """Error: unknown provider string raises ValueError listing available providers."""
     with pytest.raises(
-        ValueError, match="Persistence provider 'unknown_db' not supported"
+            ValueError, match="Persistence provider 'unknown_db' not supported"
     ):
         PersistenceManager(provider="unknown_db")
 
@@ -50,15 +51,15 @@ def test_init_raises_not_implemented_error_when_provider_unregistered(mocker) ->
     mocker.patch.dict(PersistenceManager._FACTORY_REGISTRY, {}, clear=True)
 
     with pytest.raises(
-        NotImplementedError,
-        match="is listed but not yet implemented",
+            NotImplementedError,
+            match="is listed but not yet implemented",
     ):
         PersistenceManager(provider=PersistenceProvider.REDIS.value)
 
 
 def test_create_json_engine_delegates_to_factory(
-    mock_factory: MagicMock,
-    mocker,
+        mock_factory: MagicMock,
+        mocker,
 ) -> None:
     """Delegation: forwards connection kwargs to factory.create_json_engine."""
     expected_engine = mocker.MagicMock(spec=IJsonStorageEngine)
@@ -74,8 +75,8 @@ def test_create_json_engine_delegates_to_factory(
 
 
 def test_create_vector_search_engine_delegates_to_factory(
-    mock_factory: MagicMock,
-    mocker,
+        mock_factory: MagicMock,
+        mocker,
 ) -> None:
     """Delegation: forwards index_path and connection kwargs to factory.create_vector_search_engine."""
     expected_engine = mocker.MagicMock(spec=IVectorSearchEngine)
@@ -97,8 +98,8 @@ def test_create_vector_search_engine_delegates_to_factory(
 
 
 def test_create_vector_ingestion_engine_delegates_to_factory(
-    mock_factory: MagicMock,
-    mocker,
+        mock_factory: MagicMock,
+        mocker,
 ) -> None:
     """Delegation: forwards ingestion arguments and connection kwargs to factory.create_vector_ingestion_engine."""
     expected_engine = mocker.MagicMock(spec=IVectorIngestionEngine)
@@ -119,5 +120,32 @@ def test_create_vector_ingestion_engine_delegates_to_factory(
         semantic_hashes_key="catalog:hashes",
         host="db.internal",
         db=1,
+    )
+    assert result is expected_engine
+
+
+def test_create_queue_engine_delegates_to_factory(
+        mock_factory: MagicMock,
+        mocker,
+) -> None:
+    """Delegation: forwards queue arguments and connection kwargs to factory.create_queue_engine."""
+    expected_engine = mocker.MagicMock(spec=IQueueEngine)
+    mock_factory.create_queue_engine.return_value = expected_engine
+    manager = PersistenceManager(provider=PersistenceProvider.REDIS.value)
+
+    result = manager.create_queue_engine(
+        pending_key="soc:queue:pending",
+        done_key="soc:queue:done",
+        max_done_history=50,
+        host="db.internal",
+        db=0,
+    )
+
+    mock_factory.create_queue_engine.assert_called_once_with(
+        pending_key="soc:queue:pending",
+        done_key="soc:queue:done",
+        max_done_history=50,
+        host="db.internal",
+        db=0,
     )
     assert result is expected_engine

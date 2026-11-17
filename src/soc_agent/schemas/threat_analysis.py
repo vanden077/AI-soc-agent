@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from src.api.schemas import AvailablePlatforms
+from src.api.schemas.enums import AvailablePlatforms
 from src.soc_agent.schemas.mitre_technique import MitreTechnique
 
 

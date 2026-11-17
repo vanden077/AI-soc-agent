@@ -1,22 +1,6 @@
-from enum import StrEnum
-
 from pydantic import BaseModel, Field, field_validator
 
-
-class AvailablePlatforms(StrEnum):
-    """Official MITRE ATT&CK Enterprise platforms ecosystem matrix mapping."""
-
-    WINDOWS = "windows"
-    MACOS = "macos"
-    LINUX = "linux"
-    PRE = "pre"
-    OFFICE_SUITE = "office suite"
-    IDENTITY_PROVIDER = "identity provider"
-    SAAS = "saas"
-    IAAS = "iaas"
-    NETWORK_DEVICES = "network devices"
-    CONTAINERS = "containers"
-    ESXI = "esxi"
+from src.api.schemas.enums import AvailablePlatforms
 
 
 class LogIngressPayload(BaseModel):
