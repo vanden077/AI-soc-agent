@@ -96,7 +96,7 @@ async def lifespan(ai_soc_agent: FastAPI):
         # ==============================================================================
         # PHASE 7: Start background forensic analysis worker
         # ==============================================================================
-        worker_task = start_analysis_worker(
+        worker_task: asyncio.Task[None] = start_analysis_worker(
             settings=settings,
             json_engine=json_cache,
             queue_engine=queue_cache,
