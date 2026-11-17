@@ -1,37 +1,5 @@
 from typing import Any
 
-"""Be careful if you need to update those data during tests, 
-make a local deep_copy instead of updating directly those dict."""
-
-# _________ MITRE ATTACK CORRELATION (schema) _________
-MITRE_ATTACK_CORRELATION_SCHEMA: dict[str, Any] = {
-    "tactic": "Credential Access",
-    "technic_id": "T1003.001",
-    "technic_name": "LSASS Memory",
-    "confidence_score": 5,
-}
-
-# _________ EVENT ANALYSIS (schema) _________
-EVENT_ANALYSIS_SCHEMA: dict[str, Any] = {
-    "is_threat": True,
-    "revised_severity": "CRITICAL",
-    "justification": "Detected LSASS dumping via PowerShell arguments.",
-    "mitre_correlations": [],
-    "suggested_action": "ISOLATE_HOST",
-}
-
-# _________ SIEM ALERT STATE (model) _________
-SIEM_ALERT_STATE_MODEL: dict[str, Any] = {
-    "raw_alert": {"id": "SYS-99"},
-    "correlated_logs": [
-        {"test1": "something that is a string"},
-        {"test2": 1},
-        {"test3": []},
-    ],
-    "analysis": None,
-    "metadata": {},
-}
-
 # _________ MITRE PIPELINE _________
 """
 Static immutable test datasets mimicking real MITRE ATT&CK STIX 2.1 schemas (v19.2/v20).
