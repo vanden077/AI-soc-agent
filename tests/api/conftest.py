@@ -1,16 +1,14 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from types import SimpleNamespace
-from typing import Callable
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
-
 from src.api.schemas import (
     AnalysisJobRecord,
     AvailablePlatforms,
     JobStatus,
-    LogIngressPayload
+    LogIngressPayload,
 )
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine

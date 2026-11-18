@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
-
 from src.api.schemas import (
     AnalysisJobRecord,
     AnalysisQueuedResponse,

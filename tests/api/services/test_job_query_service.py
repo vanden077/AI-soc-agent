@@ -1,9 +1,8 @@
-from typing import Callable
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException, status
-
 from src.api.schemas import (
     AnalysisJobRecord,
     JobStatus,
