@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.api.dev_setup import configure_dev_helpers
-from src.api.routers import health_route, threat_analyzer
+from src.api.routers import health_route, threat_analyzer, threat_jobs
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine
 from src.llm.interfaces import ILlmEngine
@@ -137,3 +137,4 @@ async def lifespan(ai_soc_agent: FastAPI):
 app = FastAPI(title="AI Soc agent.", lifespan=lifespan)
 app.include_router(health_route)
 app.include_router(threat_analyzer)
+app.include_router(threat_jobs)

@@ -1,9 +1,17 @@
 from collections.abc import Generator
 from types import SimpleNamespace
+from typing import Callable
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+
+from src.api.schemas import (
+    AnalysisJobRecord,
+    AvailablePlatforms,
+    JobStatus,
+    LogIngressPayload
+)
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine
 from src.llm.interfaces import ILlmEngine
@@ -43,6 +51,26 @@ def mock_vector_cache(mocker) -> MagicMock:
 def mock_queue_cache(mocker) -> MagicMock:
     """Isolated interface-bound mock for IVectorSearchEngine."""
     return mocker.MagicMock(spec=IQueueEngine)
+
+
+@pytest.fixture
+def sample_job_record_factory() -> Callable[..., AnalysisJobRecord]:
+    """Factory fixture building valid AnalysisJobRecord instances for API and service tests."""
+
+    def _create(
+            job_id: str = "11111111-1111-1111-1111-111111111111",
+            job_status: JobStatus = JobStatus.COMPLETED,
+    ) -> AnalysisJobRecord:
+        return AnalysisJobRecord(
+            job_id=job_id,
+            status=job_status,
+            log_ingress_payload=LogIngressPayload(
+                platform=AvailablePlatforms.WINDOWS,
+                raw_log="EventID=4688 New Process Created",
+            ),
+        )
+
+    return _create
 
 
 @pytest.fixture(scope="function")
