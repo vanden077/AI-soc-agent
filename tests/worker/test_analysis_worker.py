@@ -2,19 +2,21 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
 from src.api.schemas import (
     AnalysisJobRecord,
     AvailablePlatforms,
     JobStatus,
     LogIngressPayload,
 )
+from src.api.services import JobProgressService
 from src.soc_agent.schemas import ThreatAnalysis
 from src.worker import AnalysisWorker
 
 
-def _build_worker() -> tuple[
-    AnalysisWorker, MagicMock, MagicMock, MagicMock, MagicMock, MagicMock
-]:
+def _build_worker(
+        progress_service: JobProgressService | None = None,
+) -> tuple[AnalysisWorker, MagicMock, MagicMock, MagicMock, MagicMock, MagicMock]:
     """Helper constructing an AnalysisWorker with isolated engine mocks."""
     json_engine = MagicMock()
     queue_engine = MagicMock()
@@ -28,8 +30,10 @@ def _build_worker() -> tuple[
         llm_engine=llm_engine,
         embedding_engine=embedding_engine,
         vector_engine=vector_engine,
+        job_key_prefix="job:",
         job_ttl=3600,
         poll_interval=0.01,
+        progress_service=progress_service,
     )
     return worker, json_engine, queue_engine, llm_engine, embedding_engine, vector_engine
 
@@ -49,7 +53,7 @@ async def test_process_next_job_returns_false_when_queue_empty() -> None:
 async def test_process_next_job_skips_when_job_record_missing() -> None:
     """Missing/expired record branch: logs warning and returns True without running workflow."""
     worker, json_engine, queue_engine, *_ = _build_worker()
-    queue_engine.dequeue.return_value = "missing-job-id"
+    queue_engine.dequeue.return_value = "job:missing-job-id"
     json_engine.get.return_value = None
 
     processed = await worker.process_next_job()
@@ -62,10 +66,13 @@ async def test_process_next_job_skips_when_job_record_missing() -> None:
 
 async def test_process_next_job_nominal_completes_and_marks_done(mocker) -> None:
     """Nominal: transitions job PENDING -> PROCESSING -> COMPLETED, persists analysis, and marks done."""
+    progress_service = MagicMock(spec=JobProgressService)
+    progress_service.notify_progress = AsyncMock()
     worker, json_engine, queue_engine, llm_engine, embedding_engine, vector_engine = (
-        _build_worker()
+        _build_worker(progress_service=progress_service)
     )
     job_id = "job-123"
+    job_key = f"job:{job_id}"
     record = AnalysisJobRecord(
         job_id=job_id,
         status=JobStatus.PENDING,
@@ -82,7 +89,7 @@ async def test_process_next_job_nominal_completes_and_marks_done(mocker) -> None
         matched_techniques=[],
     )
 
-    queue_engine.dequeue.return_value = job_id
+    queue_engine.dequeue.return_value = job_key
     json_engine.get.return_value = record.model_dump(mode="json")
 
     mock_forensic_cls = mocker.patch("src.worker.analysis_worker.ForensicService")
@@ -112,7 +119,10 @@ async def test_process_next_job_nominal_completes_and_marks_done(mocker) -> None
     assert second_saved.analysis == expected_analysis
     assert second_saved.error is None
 
-    queue_engine.mark_done.assert_called_once_with(job_id)
+    queue_engine.mark_done.assert_called_once_with(job_key)
+    progress_service.job_started.assert_called_once_with()
+    progress_service.job_finished.assert_called_once_with()
+    assert progress_service.notify_progress.await_count == 2
 
 
 async def test_process_next_job_marks_failed_and_done_when_workflow_crashes(
@@ -121,6 +131,7 @@ async def test_process_next_job_marks_failed_and_done_when_workflow_crashes(
     """Failure branch: records FAILED status with opaque error message and moves job to done."""
     worker, json_engine, queue_engine, *_ = _build_worker()
     job_id = "job-err"
+    job_key = f"job:{job_id}"
     record = AnalysisJobRecord(
         job_id=job_id,
         status=JobStatus.PENDING,
@@ -130,7 +141,7 @@ async def test_process_next_job_marks_failed_and_done_when_workflow_crashes(
         ),
     )
 
-    queue_engine.dequeue.return_value = job_id
+    queue_engine.dequeue.return_value = job_key
     json_engine.get.return_value = record.model_dump(mode="json")
 
     mock_forensic_cls = mocker.patch("src.worker.analysis_worker.ForensicService")
@@ -150,7 +161,7 @@ async def test_process_next_job_marks_failed_and_done_when_workflow_crashes(
     assert final_saved.analysis is None
     assert final_saved.error == "Forensic analysis failed."
 
-    queue_engine.mark_done.assert_called_once_with(job_id)
+    queue_engine.mark_done.assert_called_once_with(job_key)
 
 
 async def test_run_polls_until_cancelled(mocker) -> None:

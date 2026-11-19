@@ -61,8 +61,9 @@ class Settings(BaseModel):
     REDIS_VECTOR_POOL_DB_ID: int = Field(
         description="Index of the Redis database storing VECTOR documents (only because it is a POC, in production everything should be split)."
     )
-    REDIS_QUEUE_PENDING_KEY: str = Field(default="soc:queue:pending", description="Queue pending key name.")
-    REDIS_QUEUE_DONE_KEY: str = Field(default="soc:queue:done", description="Queue done key name.")
+    REDIS_QUEUE_PENDING_KEY: str = Field(description="Queue pending key name.")
+    REDIS_QUEUE_DONE_KEY: str = Field(description="Queue done key name.")
+    REDIS_JSON_DOCUMENT_KEY: str = Field(description="Key prefix for JSON documents.")
     REDIS_QUEUE_MAX_PENDING_SIZE: int = Field(default=50, ge=1,
                                               description="Max queue pending size, for throttling/anti DoS.")
     REDIS_QUEUE_MAX_DONE_HISTORY: int = Field(default=100, ge=1,

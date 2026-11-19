@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from src.api.services import JobProgressService
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine
 from src.llm.interfaces import ILlmEngine
@@ -21,6 +22,7 @@ def start_analysis_worker(
         llm_engine: ILlmEngine,
         embedding_engine: IEmbeddingEngine,
         vector_engine: IVectorSearchEngine,
+        progress_service: JobProgressService | None = None,
 ) -> asyncio.Task[None]:
     """Instantiate and schedule the background forensic analysis worker task."""
     logger.info("[WORKER STARTUP] Scheduling background forensic worker...")
@@ -31,6 +33,8 @@ def start_analysis_worker(
         embedding_engine=embedding_engine,
         vector_engine=vector_engine,
         job_ttl=settings.REDIS_JOBS_TTL,
+        job_key_prefix=settings.REDIS_JSON_DOCUMENT_KEY,
         poll_interval=settings.WORKER_POLL_INTERVAL,
+        progress_service=progress_service,
     )
     return asyncio.create_task(worker.run())

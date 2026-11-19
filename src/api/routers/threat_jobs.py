@@ -13,6 +13,7 @@ def _build_query_service(request: Request) -> JobQueryService:
     return JobQueryService(
         json_engine=request.state.json_cache,
         queue_engine=request.state.queue_cache,
+        job_key_prefix=request.state.settings.REDIS_JSON_DOCUMENT_KEY
     )
 
 

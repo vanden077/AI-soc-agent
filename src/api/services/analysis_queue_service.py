@@ -24,21 +24,24 @@ class AnalysisQueueService:
             self,
             json_engine: IJsonStorageEngine,
             queue_engine: IQueueEngine,
-            max_pending_size: int = 50,
-            job_ttl: int = 86_400,
+            max_pending_size: int,
+            job_ttl: int,
+            job_key_prefix: str,
     ) -> None:
         self._json_engine = json_engine
         self._queue_engine = queue_engine
         self._max_pending_size = max_pending_size
         self._job_ttl = job_ttl
+        self._job_key_prefix = job_key_prefix
 
     def submit_log(self, payload: LogIngressPayload) -> AnalysisQueuedResponse:
         """Orchestrate backpressure check, job persistence, and FIFO queue admission."""
         self._ensure_queue_capacity()
 
         job_id = str(uuid4())
-        self._persist_initial_job(job_id=job_id, payload=payload)
-        queue_size = self._enqueue_with_rollback(job_id=job_id)
+        job_key = f"{self._job_key_prefix}{job_id}"
+        self._persist_initial_job(job_id=job_id, job_key=job_key, payload=payload)
+        queue_size = self._enqueue_with_rollback(job_key=job_key)
 
         logger.info(
             f"[QUEUE SERVICE] Enqueued job {job_id} for platform {payload.platform} (queue_size={queue_size}).",
@@ -66,9 +69,10 @@ class AnalysisQueueService:
                 detail="Analysis queue capacity reached. Please retry later.",
             )
 
-    def _persist_initial_job(self, job_id: str, payload: LogIngressPayload) -> None:
+    def _persist_initial_job(
+            self, job_id: str, job_key: str, payload: LogIngressPayload
+    ) -> None:
         """Persist the initial PENDING job record in JSON storage."""
-        job_key = f"job:{job_id}"
         record = AnalysisJobRecord(
             job_id=job_id,
             status=JobStatus.PENDING,
@@ -84,11 +88,11 @@ class AnalysisQueueService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def _enqueue_with_rollback(self, job_id: str) -> int:
-        """Push job_id onto the pending queue and rollback JSON storage if enqueuing fails."""
+    def _enqueue_with_rollback(self, job_key: str) -> int:
+        """Push job_key onto the pending queue and rollback JSON storage if enqueuing fails."""
         try:
-            return self._queue_engine.enqueue(job_id)
+            return self._queue_engine.enqueue(job_key)
         except Exception as err:
-            logger.error(f"[QUEUE SERVICE] Failed to enqueue job '{job_id}', rolling back JSON record: {err!s}")
-            self._json_engine.delete(f"job:{job_id}")
+            logger.error(f"[QUEUE SERVICE] Failed to enqueue job '{job_key}', rolling back JSON record: {err!s}")
+            self._json_engine.delete(job_key)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

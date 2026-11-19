@@ -30,6 +30,7 @@ def _session_settings() -> Settings:
         REDIS_VECTOR_POOL_DB_ID=1,
         REDIS_QUEUE_PENDING_KEY="soc:queue:pending",
         REDIS_QUEUE_DONE_KEY="soc:queue:done",
+        REDIS_JSON_DOCUMENT_KEY="job:",
         REDIS_QUEUE_MAX_PENDING_SIZE=5,
         REDIS_QUEUE_MAX_DONE_HISTORY=10,
         REDIS_JOBS_TTL=10,

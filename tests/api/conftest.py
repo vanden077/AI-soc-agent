@@ -1,9 +1,11 @@
+import asyncio
 from collections.abc import Callable, Generator
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+
 from src.api.schemas import (
     AnalysisJobRecord,
     AvailablePlatforms,
@@ -71,6 +73,11 @@ def sample_job_record_factory() -> Callable[..., AnalysisJobRecord]:
     return _create
 
 
+def _noop_warmup_task(*_args: object, **_kwargs: object) -> asyncio.Task[None]:
+    """Return an immediately completing asyncio Task for lifespan startup tests."""
+    return asyncio.create_task(asyncio.sleep(0))
+
+
 @pytest.fixture(scope="function")
 def lifespan_mocks(
         mocker,
@@ -92,6 +99,8 @@ def lifespan_mocks(
         init_vector_pool=mocker.patch("src.main.init_vector_pool", return_value=mock_vector_cache),
         init_queue_pool=mocker.patch("src.main.init_queue_pool", return_value=mock_queue_cache),
         init_llm=mocker.patch("src.main.init_llm", return_value=mock_llm_engine),
+        warmup_llm_background=mocker.patch("src.main.warmup_llm_background",
+                                           side_effect=_noop_warmup_task),
     )
 
 

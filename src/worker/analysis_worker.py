@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from src.api.schemas import AnalysisJobRecord, JobStatus
-from src.api.services import ForensicService
+from src.api.services import ForensicService, JobProgressService
 from src.embedding.interfaces import IEmbeddingEngine
 from src.llm.interfaces import ILlmEngine
 from src.persistence.interfaces import (
@@ -28,16 +28,20 @@ class AnalysisWorker:
             llm_engine: ILlmEngine,
             embedding_engine: IEmbeddingEngine,
             vector_engine: IVectorSearchEngine,
+            job_key_prefix: str,
             job_ttl: int = 86_400,
             poll_interval: float = 0.5,
+            progress_service: JobProgressService | None = None,
     ) -> None:
         self._json_engine = json_engine
         self._queue_engine = queue_engine
         self._llm_engine = llm_engine
         self._embedding_engine = embedding_engine
         self._vector_engine = vector_engine
+        self._job_key_prefix = job_key_prefix
         self._job_ttl = job_ttl
         self._poll_interval = poll_interval
+        self._progress_service = progress_service
 
     async def run(self) -> None:
         """Continuously poll the pending queue until canceled on application shutdown."""
@@ -53,34 +57,46 @@ class AnalysisWorker:
 
     async def process_next_job(self) -> bool:
         """Pop and process a single job from the pending queue. Returns False if queue is empty."""
-        job_id = await asyncio.to_thread(self._queue_engine.dequeue)
-        if job_id is None:
+        job_key = await asyncio.to_thread(self._queue_engine.dequeue)
+        if job_key is None:
             return False
 
-        record = await self._load_job(job_id=job_id)
+        record = await self._load_job(job_key=job_key)
         if record is None:
             return True
 
-        await self._update_status(record=record, status=JobStatus.PROCESSING)
+        # If progress service is bound, increment its internal counter and notify WebSocket
+        if self._progress_service is not None:
+            self._progress_service.job_started()
+            await self._progress_service.notify_progress()
 
         try:
-            analysis = await self._execute_forensic_workflow(record=record)
-            record.analysis = analysis
-            await self._update_status(record=record, status=JobStatus.COMPLETED)
-            logger.info(f"[ANALYSIS WORKER] Job {job_id} completed successfully.")
-        except Exception as err:
-            logger.error(f"[ANALYSIS WORKER] Job {job_id} failed: {err!s}")
-            record.error = "Forensic analysis failed."
-            await self._update_status(record=record, status=JobStatus.FAILED)
+            await self._update_status(record=record, status=JobStatus.PROCESSING)
 
-        await asyncio.to_thread(self._queue_engine.mark_done, job_id)
+            try:
+                analysis = await self._execute_forensic_workflow(record=record)
+                record.analysis = analysis
+                await self._update_status(record=record, status=JobStatus.COMPLETED)
+                logger.info(f"[ANALYSIS WORKER] Job {record.job_id} completed successfully.")
+            except Exception as err:
+                logger.error(f"[ANALYSIS WORKER] Job {record.job_id} failed: {err!s}")
+                record.error = "Forensic analysis failed."
+                await self._update_status(record=record, status=JobStatus.FAILED)
+
+            await asyncio.to_thread(self._queue_engine.mark_done, job_key)
+        finally:
+            # Notify WebSocket that job is finished, and calculate new X/Y done.
+            if self._progress_service is not None:
+                self._progress_service.job_finished()
+                await self._progress_service.notify_progress()
+
         return True
 
-    async def _load_job(self, job_id: str) -> AnalysisJobRecord | None:
+    async def _load_job(self, job_key: str) -> AnalysisJobRecord | None:
         """Retrieve and validate the persisted job payload from JSON storage."""
-        raw_data = await asyncio.to_thread(self._json_engine.get, f"job:{job_id}")
+        raw_data = await asyncio.to_thread(self._json_engine.get, job_key)
         if raw_data is None:
-            logger.warning(f"[ANALYSIS WORKER] Job {job_id} missing or expired in JSON storage, skipping.")
+            logger.warning(f"[ANALYSIS WORKER] Job '{job_key}' missing or expired in JSON storage, skipping.")
             return None
         return AnalysisJobRecord.model_validate(raw_data)
 
@@ -89,7 +105,7 @@ class AnalysisWorker:
         record.status = status
         await asyncio.to_thread(
             self._json_engine.insert,
-            key=f"job:{record.job_id}",
+            key=f"{self._job_key_prefix}{record.job_id}",
             data=record.model_dump(mode="json"),
             ttl=self._job_ttl,
         )

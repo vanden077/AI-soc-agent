@@ -1,16 +1,19 @@
+import asyncio
 import logging
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+from src.api.schemas import AvailablePlatforms
 from src.constants import Settings
 from src.llm.interfaces import ILlmEngine
-from src.startup.llm import init_llm
+from src.startup.llm import init_llm, warmup_llm_background
 
 
 def test_init_llm_nominal_instantiates_manager_and_returns_engine(
-    mocker,
-    mock_settings,
-    caplog,
+        mocker,
+        mock_settings,
+        caplog,
 ) -> None:
     """Nominal: instantiates LlmManager with settings attributes and returns its engine."""
     with caplog.at_level(logging.INFO):
@@ -28,14 +31,14 @@ def test_init_llm_nominal_instantiates_manager_and_returns_engine(
         )
         assert result is mock_engine
         assert (
-            f"[LLM STARTUP] Load LLM {mock_settings.LLM_ENGINE}, model {mock_settings.LLM_MODEL}..."
-            in caplog.text
+                f"[LLM STARTUP] Load LLM {mock_settings.LLM_ENGINE}, model {mock_settings.LLM_MODEL}..."
+                in caplog.text
         )
 
 
 def test_init_llm_logs_and_reraises_on_exception(
-    mocker,
-    caplog,
+        mocker,
+        caplog,
 ) -> None:
     """Error: logs diagnostic message and re-raises exception when LlmManager fails."""
     with caplog.at_level(logging.ERROR):
@@ -54,6 +57,64 @@ def test_init_llm_logs_and_reraises_on_exception(
             init_llm(settings=mock_settings)
 
         assert (
-            "[LLM STARTUP] LLM initialization failed because: Engine 'invalid_engine' not supported"
-            in caplog.text
+                "[LLM STARTUP] LLM initialization failed because: Engine 'invalid_engine' not supported"
+                in caplog.text
         )
+
+
+@pytest.mark.asyncio
+async def test_warmup_llm_background_nominal_executes_probe(
+        mocker,
+        caplog,
+) -> None:
+    """Nominal: schedules background ForensicService probe and logs readiness."""
+    mock_llm = MagicMock()
+    mock_embedding = MagicMock()
+    mock_vector = MagicMock()
+    mock_forensic_cls = mocker.patch("src.startup.llm.ForensicService")
+    mock_forensic_cls.return_value.analyze_and_report = AsyncMock(return_value=None)
+
+    with caplog.at_level(logging.INFO):
+        task = warmup_llm_background(
+            llm_engine=mock_llm,
+            embedding_engine=mock_embedding,
+            vector_engine=mock_vector,
+        )
+        assert isinstance(task, asyncio.Task)
+        await task
+
+    mock_forensic_cls.assert_called_once_with(
+        llm_engine=mock_llm,
+        embedding_engine=mock_embedding,
+        vector_engine=mock_vector,
+    )
+    mock_forensic_cls.return_value.analyze_and_report.assert_awaited_once_with(
+        platform=AvailablePlatforms.LINUX,
+        raw_log='sshd[1]: Accepted publickey for root from 127.0.0.1 port 22 ssh2',
+    )
+    assert "[LLM WARMUP] AI forensic pipeline is warm and ready." in caplog.messages
+
+
+@pytest.mark.asyncio
+async def test_warmup_llm_background_logs_warning_on_failure(
+        mocker,
+        caplog,
+) -> None:
+    """Error: catches warmup exceptions without crashing the background task."""
+    mock_forensic_cls = mocker.patch("src.startup.llm.ForensicService")
+    mock_forensic_cls.return_value.analyze_and_report = AsyncMock(
+        side_effect=RuntimeError("Ollama cold start error")
+    )
+
+    with caplog.at_level(logging.WARNING):
+        task = warmup_llm_background(
+            llm_engine=MagicMock(),
+            embedding_engine=MagicMock(),
+            vector_engine=MagicMock(),
+        )
+        await task
+
+    assert (
+            "[LLM WARMUP] Background warmup probe failed: Ollama cold start error"
+            in caplog.messages
+    )

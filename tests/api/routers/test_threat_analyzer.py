@@ -1,8 +1,9 @@
 import logging
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
+
 from src.api.schemas import (
     AnalysisQueuedResponse,
     AvailablePlatforms,
@@ -20,7 +21,7 @@ def test_ingest_and_process_log_nominal_returns_202_and_queued_response(
         mock_queue_cache: MagicMock,
         caplog,
 ) -> None:
-    """Nominal: extracts engines/settings from request.state, normalizes platform, and returns 202 Accepted."""
+    """Nominal: extracts engines/settings from request.state, normalizes platform, and notifies progress."""
     with caplog.at_level(logging.INFO):
         expected_response = AnalysisQueuedResponse(
             job_id="123e4567-e89b-12d3-a456-426614174000",
@@ -32,6 +33,10 @@ def test_ingest_and_process_log_nominal_returns_202_and_queued_response(
             "src.api.routers.threat_analyzer.AnalysisQueueService"
         )
         mock_service_cls.return_value.submit_log.return_value = expected_response
+        mock_notify = mocker.patch(
+            "src.api.routers.threat_analyzer.JobProgressService.notify_progress",
+            new_callable=AsyncMock,
+        )
 
         response = mock_client.post(
             "/threat_analyzer",
@@ -47,6 +52,7 @@ def test_ingest_and_process_log_nominal_returns_202_and_queued_response(
             queue_engine=mock_queue_cache,
             max_pending_size=mock_settings.REDIS_QUEUE_MAX_PENDING_SIZE,
             job_ttl=mock_settings.REDIS_JOBS_TTL,
+            job_key_prefix=mock_settings.REDIS_JSON_DOCUMENT_KEY,
         )
         mock_service_cls.return_value.submit_log.assert_called_once_with(
             payload=LogIngressPayload(
@@ -54,6 +60,7 @@ def test_ingest_and_process_log_nominal_returns_202_and_queued_response(
                 raw_log="EventID=10 TargetImage=lsass.exe",
             )
         )
+        mock_notify.assert_awaited_once()
         assert response.json() == expected_response.model_dump(mode="json")
         assert (
                 "[THREAT ROUTER] Received ingress log request for platform: 'windows'"

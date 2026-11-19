@@ -5,7 +5,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.api.dev_setup import configure_dev_helpers
-from src.api.routers import health_route, threat_analyzer, threat_jobs
+from src.api.routers import (
+    health_route,
+    rt_threat_analysis_progress,
+    threat_analyzer,
+    threat_jobs,
+)
+from src.api.services import JobProgressService
+from src.api.websocket import WebSocketConnectionManager
 from src.constants import Settings
 from src.embedding.interfaces import IEmbeddingEngine
 from src.llm.interfaces import ILlmEngine
@@ -24,6 +31,7 @@ from src.startup import (
     load_env_vars,
     run_pipeline,
     start_analysis_worker,
+    warmup_llm_background,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)-7s:  %(message)s")
@@ -79,6 +87,7 @@ async def lifespan(ai_soc_agent: FastAPI):
     vector_cache = None
     queue_cache = None
     worker_task = None
+    background_tasks: set[asyncio.Task[None]] = set()
 
     try:
         # ==============================================================================
@@ -96,6 +105,11 @@ async def lifespan(ai_soc_agent: FastAPI):
         # ==============================================================================
         # PHASE 7: Start background forensic analysis worker
         # ==============================================================================
+        ws_manager = WebSocketConnectionManager()
+        progress_service = JobProgressService(
+            queue_engine=queue_cache,
+            connection_manager=ws_manager,
+        )
         worker_task: asyncio.Task[None] = start_analysis_worker(
             settings=settings,
             json_engine=json_cache,
@@ -103,7 +117,19 @@ async def lifespan(ai_soc_agent: FastAPI):
             llm_engine=llm_engine,
             embedding_engine=embedding_engine,
             vector_engine=vector_cache,
+            progress_service=progress_service,
         )
+
+        # ==============================================================================
+        # PHASE 8: Warm up LLM and embedding engine in background
+        # ==============================================================================
+        warm_up: asyncio.Task[None] = warmup_llm_background(
+            llm_engine=llm_engine,
+            embedding_engine=embedding_engine,
+            vector_engine=vector_cache,
+        )
+        background_tasks.add(warm_up)
+        warm_up.add_done_callback(background_tasks.discard)
 
         logger.info("🚀 STARTUP COMPLETE")
 
@@ -115,12 +141,18 @@ async def lifespan(ai_soc_agent: FastAPI):
             "json_cache": json_cache,
             "vector_cache": vector_cache,
             "queue_cache": queue_cache,
+            "ws_manager": ws_manager,
+            "progress_service": progress_service,
         }
     finally:
-        # Gracefully stop background task
+        # Gracefully stop background tasks
         if worker_task is not None:
             worker_task.cancel()
             await asyncio.gather(worker_task, return_exceptions=True)
+        for task in tuple(background_tasks):
+            task.cancel()
+        if background_tasks:
+            await asyncio.gather(*background_tasks, return_exceptions=True)
         # Gracefully release json persistence connexions pool
         if json_cache is not None:
             json_cache.close()
@@ -134,7 +166,8 @@ async def lifespan(ai_soc_agent: FastAPI):
     logger.info("👋 Gracefully closed app... Bye")
 
 
-app = FastAPI(title="AI Soc agent.", lifespan=lifespan)
+app = FastAPI(title="AI Soc agent.", lifespan=lifespan, docs_url=None)
 app.include_router(health_route)
 app.include_router(threat_analyzer)
 app.include_router(threat_jobs)
+app.include_router(rt_threat_analysis_progress)

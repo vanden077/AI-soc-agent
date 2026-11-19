@@ -1,7 +1,7 @@
 from .cache_client import init_json_pool, init_queue_pool, init_vector_pool
 from .embedding import init_embedding_engine
 from .env_vars import load_env_vars
-from .llm import init_llm
+from .llm import init_llm, warmup_llm_background
 from .pipeline import run_pipeline
 from .stix_downloader import download_stix_file
 from .worker import start_analysis_worker
@@ -15,5 +15,6 @@ __all__ = [
     "init_vector_pool",
     "load_env_vars",
     "run_pipeline",
-    "start_analysis_worker"
+    "start_analysis_worker",
+    "warmup_llm_background"
 ]

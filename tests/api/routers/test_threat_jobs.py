@@ -3,16 +3,19 @@ from unittest.mock import MagicMock
 
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
+
 from src.api.schemas import (
     AnalysisJobRecord,
     AnalysisQueuedResponse,
     JobStatus,
 )
+from src.constants import Settings
 
 
 def test_list_pending_jobs_nominal_returns_200_and_queued_list(
         mocker,
         mock_client: TestClient,
+        mock_settings: Settings,
         mock_json_cache: MagicMock,
         mock_queue_cache: MagicMock,
 ) -> None:
@@ -33,6 +36,7 @@ def test_list_pending_jobs_nominal_returns_200_and_queued_list(
     mock_service_cls.assert_called_once_with(
         json_engine=mock_json_cache,
         queue_engine=mock_queue_cache,
+        job_key_prefix=mock_settings.REDIS_JSON_DOCUMENT_KEY,
     )
     mock_service_cls.return_value.get_pending_jobs.assert_called_once_with()
     assert response.json() == [item.model_dump(mode="json") for item in expected]
@@ -56,6 +60,7 @@ def test_list_pending_jobs_propagates_500_when_query_service_fails(
 def test_list_done_jobs_nominal_returns_200_and_records_list(
         mocker,
         mock_client: TestClient,
+        mock_settings: Settings,
         mock_json_cache: MagicMock,
         mock_queue_cache: MagicMock,
         sample_job_record_factory: Callable[..., AnalysisJobRecord],
@@ -76,6 +81,7 @@ def test_list_done_jobs_nominal_returns_200_and_records_list(
     mock_service_cls.assert_called_once_with(
         json_engine=mock_json_cache,
         queue_engine=mock_queue_cache,
+        job_key_prefix=mock_settings.REDIS_JSON_DOCUMENT_KEY,
     )
     mock_service_cls.return_value.get_done_jobs.assert_called_once_with()
     assert response.json() == [item.model_dump(mode="json") for item in expected]
@@ -99,6 +105,7 @@ def test_list_done_jobs_propagates_500_when_query_service_fails(
 def test_get_job_status_nominal_returns_200_and_job_record(
         mocker,
         mock_client: TestClient,
+        mock_settings: Settings,
         mock_json_cache: MagicMock,
         mock_queue_cache: MagicMock,
         sample_job_record_factory: Callable[..., AnalysisJobRecord],
@@ -115,6 +122,7 @@ def test_get_job_status_nominal_returns_200_and_job_record(
     mock_service_cls.assert_called_once_with(
         json_engine=mock_json_cache,
         queue_engine=mock_queue_cache,
+        job_key_prefix=mock_settings.REDIS_JSON_DOCUMENT_KEY,
     )
     mock_service_cls.return_value.get_job.assert_called_once_with(job_id=job_id)
     assert response.json() == expected.model_dump(mode="json")

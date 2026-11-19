@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Request, status
 
 from src.api.schemas import AnalysisQueuedResponse, LogIngressPayload
-from src.api.services import AnalysisQueueService
+from src.api.services import AnalysisQueueService, JobProgressService
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +21,12 @@ async def ingest_and_process_log(
 ) -> AnalysisQueuedResponse:
     """
     Validates HTTP boundaries and delegates asynchronous job persistence and FIFO queuing
-    to AnalysisQueueService.
+    to AnalysisQueueService, then broadcasts updated queue progress.
     """
     settings = request.state.settings
     json_cache = request.state.json_cache
     queue_cache = request.state.queue_cache
+    progress_service: JobProgressService = request.state.progress_service
 
     logger.info(
         f"[THREAT ROUTER] Received ingress log request for platform: '{payload.platform}'"
@@ -35,5 +36,8 @@ async def ingest_and_process_log(
         queue_engine=queue_cache,
         max_pending_size=settings.REDIS_QUEUE_MAX_PENDING_SIZE,
         job_ttl=settings.REDIS_JOBS_TTL,
+        job_key_prefix=settings.REDIS_JSON_DOCUMENT_KEY,
     )
-    return queue_service.submit_log(payload=payload)
+    queued_response = queue_service.submit_log(payload=payload)
+    await progress_service.notify_progress()
+    return queued_response
