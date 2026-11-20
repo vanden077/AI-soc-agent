@@ -39,7 +39,7 @@ class WebSocketConnectionManager:
             try:
                 await connection.send_json(payload)
             except Exception as err:
-                logger.debug(f"[WS MANAGER] Dropping unreachable WebSocket client: {err!s}")
+                logger.debug(f"[WS MANAGER] Dropping unreachable WebSocket client: {str(err)}")
                 stale.append(connection)
 
         for connection in stale:

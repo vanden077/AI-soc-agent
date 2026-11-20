@@ -19,17 +19,17 @@ class ForensicService:
     """
 
     def __init__(
-        self,
-        llm_engine: ILlmEngine,
-        embedding_engine: IEmbeddingEngine,
-        vector_engine: IVectorSearchEngine,
+            self,
+            llm_engine: ILlmEngine,
+            embedding_engine: IEmbeddingEngine,
+            vector_engine: IVectorSearchEngine,
     ):
         self._llm_engine = llm_engine
         self._embedding_engine = embedding_engine
         self._vector_engine = vector_engine
 
     async def analyze_and_report(
-        self, platform: AvailablePlatforms, raw_log: str
+            self, platform: AvailablePlatforms, raw_log: str
     ) -> ThreatAnalysis:
         """
         Triggers the core AI workflow and translates domain outcomes
@@ -46,5 +46,5 @@ class ForensicService:
             )
             return await workflow.execute(platform=platform, raw_log=raw_log)
         except Exception as e:
-            logger.error(f"[FORENSIC SERVICE] AI Workflow collapsed: {e!s}")
+            logger.error(f"[FORENSIC SERVICE] AI Workflow collapsed: {str(e)}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

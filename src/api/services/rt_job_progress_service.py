@@ -50,4 +50,4 @@ class JobProgressService:
             snapshot = await asyncio.to_thread(self.get_snapshot)
             await self._connection_manager.broadcast_json(snapshot)
         except Exception as err:
-            logger.warning(f"[PROGRESS SERVICE] Failed to broadcast job progress: {err!s}")
+            logger.warning(f"[PROGRESS SERVICE] Failed to broadcast job progress: {str(err)}")
