@@ -5,19 +5,20 @@ ARG GID=1000
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-ENV PYTHONUNBUFFERED=1
-ENV UV_COMPILE_BYTECODE=1
-ENV UV_LINK_MODE=copy
+ENV PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
 
 RUN groupadd --gid ${GID} appuser \
     && useradd --uid ${UID} --gid ${GID} --create-home appuser \
-    && mkdir -p /app \
-    && chown appuser:appuser /app
+    && mkdir -p /app /home/appuser/.cache/uv /home/appuser/.cache/huggingface \
+    && chown -R appuser:appuser /app /home/appuser/.cache
 
 WORKDIR /app
 USER appuser
 
-COPY --chown=appuser:appuser pyproject.toml ./
+COPY --chown=appuser:appuser pyproject.toml uv.lock ./
 
 RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=${UID},gid=${GID} \
-    uv sync --no-install-project
+    uv sync --frozen --no-install-project

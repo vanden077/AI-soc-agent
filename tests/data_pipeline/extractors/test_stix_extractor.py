@@ -1,8 +1,8 @@
 import re
 
 import pytest
-from src.data_pipeline.extractors.stix_extractor import StixExtractor
 
+from src.data_pipeline.extractors.stix_extractor import StixExtractor
 from tests.dataset_test import STIX_MOCK
 
 
@@ -85,8 +85,8 @@ def test_isolated_extract_mitre_id_sub_success():
     [
         "INVALID-ID",  # Failed regex validation
         "T105",  # Malformed ID length (short)
-        "T1055.01",  # Malformed sub-technique digits (must be 3 digits)
         "   ",  # Empty string or whitespaces
+        "T1055.01",  # Malformed sub-technique digits (must be 3 digits)
     ],
 )
 def test_isolated_extract_mitre_id_raises_on_invalid_format(corrupted_id):
@@ -153,8 +153,8 @@ def test_isolated_extract_description_success():
     stix_obj = STIX_MOCK["objects"][0]
     extractor = StixExtractor(stix_object=stix_obj)
     assert (
-        "Adversaries may inject malicious code into processes"
-        in extractor._extract_description()
+            "Adversaries may inject malicious code into processes"
+            in extractor._extract_description()
     )
 
 
@@ -166,8 +166,8 @@ def test_isolated_extract_technic_name_raises_on_empty(corrupted_name):
     extractor._mitre_id = "T1055"  # Hydrate context for logging contract
 
     with pytest.raises(
-        ValueError,
-        match="Technique T1055 is corrupted: 'name' field is missing or empty",
+            ValueError,
+            match="Technique T1055 is corrupted: 'name' field is missing or empty",
     ):
         extractor._extract_technic_name()
 
@@ -180,8 +180,8 @@ def test_isolated_extract_description_raises_on_empty(corrupted_desc):
     extractor._mitre_id = "T1055"  # Hydrate context for logging contract
 
     with pytest.raises(
-        ValueError,
-        match="Technique T1055 is corrupted: 'description' field is missing or empty",
+            ValueError,
+            match="Technique T1055 is corrupted: 'description' field is missing or empty",
     ):
         extractor._extract_description()
 
@@ -266,7 +266,7 @@ def test_isolated_extract_mutable_elements_validation_and_sorting():
     ],
 )
 def test_isolated_extract_mutable_elements_fallback_on_malformed_type(
-    corrupted_payload,
+        corrupted_payload,
 ):
     """Should safely fallback to an empty list if x_mitre_mutable_elements is not a list primitive."""
     extractor = StixExtractor(stix_object=corrupted_payload)

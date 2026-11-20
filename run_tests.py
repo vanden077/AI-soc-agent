@@ -1,10 +1,10 @@
 import subprocess
+import sys
 import webbrowser
 from pathlib import Path
-import sys
 
 print("🚀 Run unit tests with coverage...")
-result = subprocess.run(["coverage", "run", "-m", "pytest"])
+result = subprocess.run(["coverage", "run", "--branch", "-m", "pytest"])
 
 # return code 0 = tests failed
 if result.returncode != 0:

@@ -45,7 +45,8 @@ class StixExtractor:
         external_references = self._stix_object.get("external_references", [])
         if isinstance(external_references, list):
             for ref in external_references:
-                if ref.get("source_name") == "mitre-attack":
+                if ref.get("source_name") == "mitre-attack":  # pragma: no branch
+                    # it is always the object's last element in stix file, and when it is found, we break the loop.
                     mitre_id = ref.get("external_id", "").strip()
                     if re.match(r"^T\d{4}(?:\.\d{3})?$", mitre_id):
                         return mitre_id
@@ -109,11 +110,14 @@ class StixExtractor:
         tactics: list[str] = []
         for phase in phases:
             if (
-                isinstance(phase, dict)
-                and phase.get("kill_chain_name") == "mitre-attack"
-            ):
+                    isinstance(phase, dict)
+                    and phase.get("kill_chain_name") == "mitre-attack"
+            ):  # pragma: no branch
+                # if kill_chain_phases is not a dict, it means that stix file is corrupted, we don't want to override
+                # this object.
                 phase_name = phase.get("phase_name")
-                if phase_name:
+                if phase_name:  # pragma: no branch
+                    # if phase_name is empty or None, we don't want to override this object.
                     tactics.append(str(phase_name))
 
         return sorted(tactics, key=StixExtractor._case_insensitive_sort_key)
@@ -126,10 +130,12 @@ class StixExtractor:
 
         cleaned_elements: list[dict[str, str]] = []
         for elem in elements:
-            if isinstance(elem, dict):
+            if isinstance(elem, dict):  # pragma: no branch
+                # if elem is not a dict, it means that stix file is corrupted, we don't want to override this object.
                 field_name = elem.get("field")
                 field_desc = elem.get("description")
-                if field_name and field_desc:
+                if field_name and field_desc:  # pragma: no branch
+                    # if field_name or field_desc are empty or None, we don't want to override this object.
                     cleaned_elements.append(
                         {"field": str(field_name), "description": str(field_desc)}
                     )

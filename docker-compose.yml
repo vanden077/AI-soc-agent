@@ -1,6 +1,8 @@
 x-redis-creds: &redis-creds
   REDIS_USERNAME: "default"
-  REDIS_PASSWORD: "uAknMMvZDYm7HhhaWPp3" # <= I know, should be in a vault etc ... it's just a PoC
+  REDIS_PASSWORD: "uAknMMvZDYm7HhhaWPp3" # PoC default credentials
+
+x-llm-model: &llm-model "phi4-mini:3.8b" # Tuned for CPU-only execution (no GPU required)
 
 services:
   web:
@@ -13,6 +15,7 @@ services:
     volumes:
       - .:/app
       - /app/.venv
+      - hf-cache:/home/appuser/.cache/huggingface
     environment:
       <<: *redis-creds
       ENV: "development"
@@ -43,20 +46,19 @@ services:
       EMBEDDING_MODEL_NAME: "all-MiniLM-L6-v2"
       EMBEDDING_DIMENSION: 384
       LLM_ENGINE: "ollama"
-      LLM_MODEL: "phi4-mini:3.8b" # because of my laptop without GPU :(
+      LLM_MODEL: *llm-model
       LLM_URL: "http://cyber-agent-ollama:11434"
       LLM_TEMPERATURE: 0.0
-    command: uv run --no-sync fastapi dev src/main.py --host 0.0.0.0 --port 8080
+    command: fastapi dev src/main.py --host 0.0.0.0 --port 8080
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
       ollama-puller:
         condition: service_completed_successfully
     networks:
       - cyber-agent-network
 
-
-  # --- LLM Local engine ---
+  # --- Local LLM Engine ---
   cyber-agent-ollama:
     image: ollama/ollama:latest
     container_name: cyber-agent-ollama
@@ -76,20 +78,21 @@ services:
   ollama-puller:
     image: curlimages/curl:latest
     container_name: ollama-puller
+    environment:
+      TARGET_MODEL: *llm-model
     depends_on:
       - cyber-agent-ollama
     entrypoint: >
-      sh -c "
-      echo '🚀 Waiting for Ollama socket...';
+      sh -c '
+      echo "🚀 Waiting for Ollama socket...";
       until curl -s -f http://cyber-agent-ollama:11434/api/tags > /dev/null; do sleep 2; done;
-      echo '📦 Ollama online. Pulling phi4-mini:3.8b...';
-      curl -s -f -N -X POST http://cyber-agent-ollama:11434/api/pull -d '{\"name\": \"phi4-mini:3.8b\"}' > /dev/null;
-      echo '🎯 Model successfully cached!';"
+      echo "📦 Ollama online. Pulling $${TARGET_MODEL}...";
+      curl -s -f -N -X POST http://cyber-agent-ollama:11434/api/pull -d "{\"name\": \"$${TARGET_MODEL}\"}" > /dev/null;
+      echo "🎯 Model $${TARGET_MODEL} successfully cached!";'
     networks:
       - cyber-agent-network
 
-
-  # --- Cache | Checkpoint | Vector database ---
+  # --- Cache | Queue | Vector Database ---
   redis:
     image: redis/redis-stack-server:latest
     container_name: cyber-agent-redis
@@ -98,16 +101,21 @@ services:
       REDIS_ARGS: "--save 60 1 --appendonly yes"
     ports:
       - "6379:6379"
-      - "8001:8001"
     volumes:
       - redis-cyber-data:/data
-    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "uAknMMvZDYm7HhhaWPp3", "ping" ]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
     networks:
       - cyber-agent-network
 
 volumes:
   ollama-data: { }
   redis-cyber-data: { }
+  hf-cache: { }
 
 networks:
   cyber-agent-network:

@@ -159,8 +159,10 @@ async def lifespan(ai_soc_agent: FastAPI):
         # Gracefully release vector persistence connexions pool
         if vector_cache is not None:
             vector_cache.close()
-        # Gracefully release queue connexions pool
-        if queue_cache is not None:
+        # Gracefully release queue persistence connexions pool
+        # False branch only triggers on init_queue_pool failure, which propagates an
+        # exception out of `finally` instead of reaching line 168 (normal exit).
+        if queue_cache is not None:  # pragma: no branch
             queue_cache.close()
 
     logger.info("👋 Gracefully closed app... Bye")

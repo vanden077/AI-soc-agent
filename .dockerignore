@@ -1,4 +1,21 @@
+# Version control & IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Python & uv environments / caches
 .venv/
 .uv/
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+
+# Test & linter artifacts
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Heavy runtime datasets (downloaded automatically at startup)
+data/mitre/*.json

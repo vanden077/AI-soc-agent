@@ -1,7 +1,9 @@
 import logging
+from typing import Annotated
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Request, status, Body
 
+from src.api.dev_setup import THREAT_ANALYZER_EXAMPLES
 from src.api.schemas import AnalysisQueuedResponse, LogIngressPayload
 from src.api.services import AnalysisQueueService, JobProgressService
 
@@ -17,7 +19,7 @@ threat_analyzer = APIRouter(prefix="/threat_analyzer", tags=["Threat Analysis"])
     description="Validates inbound log payload, enforces backpressure limits, and queues the job for background AI correlation.",
 )
 async def ingest_and_process_log(
-        request: Request, payload: LogIngressPayload
+        request: Request, payload: Annotated[LogIngressPayload, Body(openapi_examples=THREAT_ANALYZER_EXAMPLES)],
 ) -> AnalysisQueuedResponse:
     """
     Validates HTTP boundaries and delegates asynchronous job persistence and FIFO queuing
