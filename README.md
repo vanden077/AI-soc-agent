@@ -259,7 +259,7 @@ Each module is self-contained and documents its own internal flows, contracts, a
 
 | Module                   | Responsibility                                                                             | Documentation                                     |
 |:-------------------------|:-------------------------------------------------------------------------------------------|:--------------------------------------------------|
-| **`src/startup/`**       | Composition Root, FastAPI lifespan orchestration, and background LLM warmup                | [View Module Docs](./src/startup/README.md)       |
+| **`src/startup/`**       | Composition Root, FastAPI lifespan orchestration, and background LLM warmup                | [View Module Docs](./src/README.md)               |
 | **`src/data_pipeline/`** | MITRE ATT&CK STIX 2.1 automated ETL (`Extractor → Filter → Compiler → Vector Ingestion`)   | [View Module Docs](./src/data_pipeline/README.md) |
 | **`src/api/`**           | REST endpoints, CQRS services, WebSocket real-time progress, and dev Swagger badge         | [View Module Docs](./src/api/README.md)           |
 | **`src/worker/`**        | Asynchronous FIFO queue consumer and analysis job lifecycle management                     | [View Module Docs](./src/worker/README.md)        |
