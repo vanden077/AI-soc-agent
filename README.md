@@ -268,3 +268,61 @@ Each module is self-contained and documents its own internal flows, contracts, a
 | **`src/persistence/`**   | Unified Redis (RESP2/RESP3) engine for JSON storage, FIFO queue, and KNN vector search     | [View Module Docs](./src/persistence/README.md)   |
 | **`src/embedding/`**     | Abstract embedding contract (`IEmbeddingEngine`) and local HuggingFace engine              | [View Module Docs](./src/embedding/README.md)     |
 | **`src/llm/`**           | Abstract LLM contract (`ILlmEngine`) and local Ollama structured inference engine          | [View Module Docs](./src/llm/README.md)           |
+
+---
+
+## 🚀 Quickstart (One-Command Demo & Auto-Cleanup)
+
+No local Python, Redis, or Ollama setup is required—only **Docker** with Docker Compose.
+
+### 1. Start the Entire Stack (and Auto-Clean on Exit)
+
+Run the following single command from the repository root:
+
+```bash
+docker compose up --build ; docker compose down -v --rmi local
+```
+
+**What happens automatically:**
+
+1. Starts **Redis Stack** and waits until healthy.
+2. Starts **Ollama** and pulls the CPU-optimized model (`phi4-mini:3.8b`).
+3. Builds and starts the **FastAPI** server, downloads the **MITRE ATT&CK STIX 2.1** bundle, vectorizes active
+   techniques into RedisVL, and warms up the AI pipeline.
+4. Open **`http://localhost:8080`** in your browser (auto-redirects to **Swagger UI** with the live WebSocket job
+   progress badge in the header).
+5. Press **`Ctrl+C`** when finished: `docker compose down -v --rmi local` automatically removes all containers,
+   networks, model volumes, and local images.
+
+### 2. Test with Built-In Sample Logs (3 Hostile + 3 Benign)
+
+Swagger UI comes pre-loaded with **6 ready-to-run forensic scenarios** in the `POST /threat_analyzer` example dropdown:
+
+| Scenario                                                        | Platform       | Expected Outcome                                                                     |
+|:----------------------------------------------------------------|:---------------|:-------------------------------------------------------------------------------------|
+| **`[Hostile]` Malicious OAuth Consent & Inbox Exfiltration**    | `saas`         | `is_threat: true` — Matches MITRE ATT&CK token theft & email forwarding/hiding rules |
+| **`[Hostile]` Hidden PowerShell Credential Dumping (Mimikatz)** | `windows`      | `is_threat: true` — Matches OS Credential Dumping / PowerShell execution             |
+| **`[Hostile]` External Invoice Forwarding Rule**                | `office suite` | `is_threat: true` — Matches Email Collection / Forwarding Rule                       |
+| **`[Benign]` Standard User Launching Notepad**                  | `windows`      | `is_threat: false` — Early exit at Guard Layer (`semantic_summary: null`, 0 KNN I/O) |
+| **`[Benign]` Scheduled GoogleUpdate Background Task**           | `windows`      | `is_threat: false` — Early exit at Guard Layer                                       |
+| **`[Benign]` Automated Azure AD Connect Directory Sync**        | `saas`         | `is_threat: false` — Early exit at Guard Layer                                       |
+
+**Workflow in Swagger UI:**
+
+1. Expand **`POST /threat_analyzer`** → click **Try it out** → pick a scenario from the **Examples** dropdown → click
+   **Execute** (returns `202 Accepted` with a `job_id`).
+2. Watch the live progress counter update in the top bar via WebSocket.
+3. Expand **`GET /threat_analysis/job/{job_id}`** (or **`GET /threat_analysis/done`**) to inspect the structured
+   `ThreatAnalysis` report.
+
+### 3. Run the Test Suite (100% Line & Branch Coverage)
+
+The `tests/` directory mirrors `src/` 1:1 and executes completely offline using interface mocks and `fakeredis[json]`.
+
+* **Interactive Coverage Report (CLI):** Run the root helper script to execute the full suite with branch coverage and
+  automatically open the HTML report in your browser:
+  ```bash
+  uv sync && uv run python run_tests.py
+  ```
+* **IDE Integration (PyCharm / VS Code):** Right-click on the `run_tests.py` and select **Run 'pytest in tests'**
+  (pre-configured via `[tool.pytest.ini_options]` in `pyproject.toml`).
