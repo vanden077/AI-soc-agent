@@ -30,7 +30,7 @@ def test_list_pending_jobs_nominal_returns_200_and_queued_list(
     mock_service_cls = mocker.patch("src.api.routers.threat_jobs.JobQueryService")
     mock_service_cls.return_value.get_pending_jobs.return_value = expected
 
-    response = mock_client.get("/threat_analyzer/pending")
+    response = mock_client.get("/threat_analysis/pending")
 
     assert response.status_code == status.HTTP_200_OK
     mock_service_cls.assert_called_once_with(
@@ -52,7 +52,7 @@ def test_list_pending_jobs_propagates_500_when_query_service_fails(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
 
-    response = mock_client.get("/threat_analyzer/pending")
+    response = mock_client.get("/threat_analysis/pending")
 
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -75,7 +75,7 @@ def test_list_done_jobs_nominal_returns_200_and_records_list(
     mock_service_cls = mocker.patch("src.api.routers.threat_jobs.JobQueryService")
     mock_service_cls.return_value.get_done_jobs.return_value = expected
 
-    response = mock_client.get("/threat_analyzer/done")
+    response = mock_client.get("/threat_analysis/done")
 
     assert response.status_code == status.HTTP_200_OK
     mock_service_cls.assert_called_once_with(
@@ -97,7 +97,7 @@ def test_list_done_jobs_propagates_500_when_query_service_fails(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
 
-    response = mock_client.get("/threat_analyzer/done")
+    response = mock_client.get("/threat_analysis/done")
 
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -116,7 +116,7 @@ def test_get_job_status_nominal_returns_200_and_job_record(
     mock_service_cls = mocker.patch("src.api.routers.threat_jobs.JobQueryService")
     mock_service_cls.return_value.get_job.return_value = expected
 
-    response = mock_client.get(f"/threat_analyzer/job/{job_id}")
+    response = mock_client.get(f"/threat_analysis/job/{job_id}")
 
     assert response.status_code == status.HTTP_200_OK
     mock_service_cls.assert_called_once_with(
@@ -140,7 +140,7 @@ def test_get_job_status_propagates_404_when_job_not_found(
         detail=f"Analysis job '{job_id}' not found or expired.",
     )
 
-    response = mock_client.get(f"/threat_analyzer/job/{job_id}")
+    response = mock_client.get(f"/threat_analysis/job/{job_id}")
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -149,6 +149,6 @@ def test_get_job_status_returns_422_on_invalid_uuid(
         mock_client: TestClient,
 ) -> None:
     """Validation boundary: rejects malformed UUID path parameter with HTTP 422."""
-    response = mock_client.get("/threat_analyzer/job/not-a-valid-uuid")
+    response = mock_client.get("/threat_analysis/job/not-a-valid-uuid")
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

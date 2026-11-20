@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request, status
 from src.api.schemas import AnalysisJobRecord, AnalysisQueuedResponse
 from src.api.services import JobQueryService
 
-threat_jobs = APIRouter(prefix="/threat_analyzer", tags=["Threat Analysis"])
+threat_jobs = APIRouter(prefix="/threat_analysis", tags=["Analysis results"])
 
 
 def _build_query_service(request: Request) -> JobQueryService:
