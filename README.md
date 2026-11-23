@@ -1,5 +1,10 @@
 # 🛡️ AI SOC Agent
 
+![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square&logo=pytest)
+![Python](https://img.shields.io/badge/python-3.13-blue?style=flat-square&logo=python&logoColor=white)
+![Architecture](https://img.shields.io/badge/architecture-Clean%20%2F%20Hexagonal-blueviolet?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+
 **A local-first, deterministic forensic security log analysis agent powered by local LLMs, MITRE ATT&CK vector search,
 and real-time asynchronous processing.**
 
