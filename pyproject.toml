@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AI Soc analyst performing MITRE correlations."
 readme = "README.md"
 authors = [
-    { name = "Clément Pichet", email = "vanden.077@gmail.com" }
+    { name = "vanden077", email = "151510724+vanden077@users.noreply.github.com" }
 ]
 requires-python = ">=3.13"
 dependencies = [
