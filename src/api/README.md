@@ -70,8 +70,7 @@ sequenceDiagram
    the local CPU worker is saturated, excess ingestion requests are immediately rejected with `429 Too Many Requests`.
 3. **Read-Only Server-Push WebSocket & Dev Swagger Badge:**
     * `/threat_analyzer/progress` is a strict **read-only broadcast channel** managed by `WebSocketConnectionManager`
-      (which iterates over a frozen snapshot of active sockets and prunes stale clients automatically). Any client
-      payload sent upstream receives a humorous read-only notice rather than triggering state mutations.
+      (which iterates over a frozen snapshot of active sockets and prunes stale clients automatically).
     * In `development` mode (`dev_setup/setup.py`), `/` redirects to `/docs` and injects `progress_badge.js` inline into
       Swagger UI so developers can watch live batch progress directly inside the API docs.
 4. **Anti-Corruption Bridge (`ForensicService`):**

@@ -9,7 +9,7 @@ context.
 
 ## 🎯 Design Principles
 
-* **Fail-Fast Boot Sequence (Phases 1–6):** Any configuration error, missing model, or unreachable Redis/Ollama instance
+* **Fail-Fast Boot Sequence (Phases 1–8):** Any configuration error, missing model, or unreachable Redis/Ollama instance
   crashes the application immediately during startup rather than leaving the service in a degraded state.
 * **Single Composition Root:** Business services, routers, workflows, and background workers never import concrete
   drivers or managers—they receive pre-wired abstract interfaces via FastAPI lifespan state.

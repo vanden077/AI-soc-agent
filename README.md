@@ -311,7 +311,7 @@ Swagger UI comes pre-loaded with **6 ready-to-run forensic scenarios** in the `P
 
 1. Expand **`POST /threat_analyzer`** → click **Try it out** → pick a scenario from the **Examples** dropdown → click
    **Execute** (returns `202 Accepted` with a `job_id`).
-2. Watch the live progress counter update in the top bar via WebSocket.
+2. Watch the live progress counter update in the bottom badge via WebSocket.
 3. Expand **`GET /threat_analysis/job/{job_id}`** (or **`GET /threat_analysis/done`**) to inspect the structured
    `ThreatAnalysis` report.
 
